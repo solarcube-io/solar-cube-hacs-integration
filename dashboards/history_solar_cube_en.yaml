@@ -1,0 +1,150 @@
+views:
+  - type: panel
+    cards:
+      - type: custom:history-explorer-card
+        cardName: history-explorer-card-1
+        header: ' '
+        uiColors:
+          buttons: '#455a64'
+        uiLayout:
+          toolbar: top
+          selector: top
+        recordedEntitiesOnly: true
+        combineSameUnits: true
+        defaultTimeOffset: 1D
+        lineGraphHeight: 250
+        barGraphHeight: 250
+        filterEntities:
+          - sensor.*energy*
+          - sensor.*power*
+          - sensor.*voltage*
+          - sensor.*soc*
+          - sensor.*price*
+          - sensor.*cost*
+          - sensor.*compensation*
+          - sensor.*solar*
+        refresh:
+          interval: 30
+        stateColors:
+          '100': '#FF0000'
+          MNT: '#808000'
+          CH1: '#FF80AB'
+          CH2: '#D81B60'
+          CH3: '#000080'
+          DCH1: cyan
+          DCH2: '#004D60'
+          DCH3: '#808000'
+          A-C: '#757575'
+          Unknown: '#000000'
+          96-99: '#FF2000'
+          91-95: '#FF4000'
+          86-90: '#FF8000'
+          81-85: '#FFBF00'
+          76-80: '#FFFF00'
+          71-75: '#BFFF00'
+          66-70: '#80FF00'
+          61-65: '#40FF00'
+          56-60: '#00FF00'
+          51-55: '#00FF40'
+          46-50: '#00FF80'
+          41-45: '#00FFBF'
+          36-40: '#00FFFF'
+          31-35: '#00BFFF'
+          26-30: '#0080FF'
+          21-25: '#0040FF'
+          16-20: '#0000FF'
+          11-15: '#0000BF'
+          6-10: '#000080'
+          1-5: '#000040'
+          UKN: '#000000'
+        graphs:
+          - type: bar
+            title: Grid import - Consumption - PV production - Grid export
+            options:
+              interval: hourly
+              stacked: false
+            entities:
+              - entity: sensor.hourly_grid_buy_energy
+                color: '#488EC2'
+                name: Grid import
+              - entity: sensor.hourly_consumption_energy
+                color: '#743029'
+                name: Consumption
+              - entity: sensor.hourly_pv_energy
+                color: '#FF9800'
+                name: PV production
+              - entity: sensor.hourly_grid_sell_energy
+                color: '#A27FDB'
+                name: Grid export
+          - type: timeline
+            title: Controller state
+            entities:
+              - entity: sensor.solar_cube_controller_id
+                process: >
+                  (state == 0) ? "MNT" : (state == 2) ? "CH1" : (state == 10) ?
+                  "CH2" : (state == 19) ? "CH3" : (state == 4) ? "DCH1" : (state
+                  == 20) ? "DCH2" : (state == 21) ? "DCH3" : (state == 7) ?
+                  "A-C" : "Unknown"
+          - type: timeline
+            title: Target battery level
+            entities:
+              - entity: sensor.solar_cube_target_soc
+                process: >
+                  (parseFloat(state).toFixed(2) * 100) == 100 ? "100" :
+                  (parseFloat(state).toFixed(2) * 100) >= 96 ? "96-99" :
+                  (parseFloat(state).toFixed(2) * 100) >= 91 ? "91-95" :
+                  (parseFloat(state).toFixed(2) * 100) >= 86 ? "86-90" :
+                  (parseFloat(state).toFixed(2) * 100) >= 81 ? "81-85" :
+                  (parseFloat(state).toFixed(2) * 100) >= 76 ? "76-80" :
+                  (parseFloat(state).toFixed(2) * 100) >= 71 ? "71-75" :
+                  (parseFloat(state).toFixed(2) * 100) >= 66 ? "66-70" :
+                  (parseFloat(state).toFixed(2) * 100) >= 61 ? "61-65" :
+                  (parseFloat(state).toFixed(2) * 100) >= 56 ? "56-60" :
+                  (parseFloat(state).toFixed(2) * 100) >= 51 ? "51-55" :
+                  (parseFloat(state).toFixed(2) * 100) >= 46 ? "46-50" :
+                  (parseFloat(state).toFixed(2) * 100) >= 41 ? "41-45" :
+                  (parseFloat(state).toFixed(2) * 100) >= 36 ? "36-40" :
+                  (parseFloat(state).toFixed(2) * 100) >= 31 ? "31-35" :
+                  (parseFloat(state).toFixed(2) * 100) >= 26 ? "26-30" :
+                  (parseFloat(state).toFixed(2) * 100) >= 21 ? "21-25" :
+                  (parseFloat(state).toFixed(2) * 100) >= 16 ? "16-20" :
+                  (parseFloat(state).toFixed(2) * 100) >= 11 ? "11-15" :
+                  (parseFloat(state).toFixed(2) * 100) >= 6 ? "6-10" :
+                  (parseFloat(state).toFixed(2) * 100) >= 1 ? "1-5" :
+                  (parseFloat(state).toFixed(2) * 100) == 0 ? "0" : "UKN"
+          - type: line
+            title: Battery state of charge
+            entities:
+              - entity: sensor.solar_cube_ess_soc
+                color: '#E91E63'
+                lineMode: stepped
+                fill: rgba(151,205,187,0.15)
+          - type: line
+            title: Buy/Sell price
+            entities:
+              - entity: sensor.solar_cube_buy_energy_price
+                color: '#607D8B'
+                lineMode: stepped
+                fill: rgba(151,205,187,0.15)
+              - entity: sensor.solar_cube_sell_energy_price
+                color: '#37FEB4'
+                lineMode: stepped
+                fill: rgba(151,205,187,0.15)
+          - type: line
+            title: PV power
+            entities:
+              - entity: sensor.solar_cube_pv_active_power
+                color: '#FF9800'
+                lineMode: stepped
+                fill: rgba(151,205,187,0.15)
+          - type: line
+            title: L1 - L2 - L3 Phase voltage
+            entities:
+              - entity: sensor.solar_cube_grid_l1_voltage
+                color: brown
+              - entity: sensor.solar_cube_grid_l2_voltage
+                color: black
+              - entity: sensor.solar_cube_grid_l3_voltage
+                color: grey
+    icon: mdi:chart-bar
+    title: Readings History

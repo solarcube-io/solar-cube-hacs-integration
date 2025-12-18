@@ -1,0 +1,299 @@
+views:
+  - cards: []
+    icon: mdi:solar-power-variant
+    type: sections
+    sections:
+      - type: grid
+        cards:
+          - type: custom:energy-period-selector-plus
+            card_background: true
+            today_button: true
+            prev_next_buttons: true
+            compare_button_type: ''
+            today_button_type: icon
+            period_buttons:
+              - day
+              - week
+              - month
+          - type: custom:energy-flow-card-plus
+            entities:
+              battery:
+                entity:
+                  consumption: sensor.ess_discharged_energy
+                  production: sensor.ess_charged_energy
+                state_of_charge_unit: null
+              grid:
+                entity:
+                  consumption: sensor.grid_buy_active_energy_total
+                  production: sensor.grid_sell_active_energy_total
+              solar:
+                entity: sensor.pv_active_energy_total
+                display_zero_state: true
+              home:
+                entity: sensor.consumption_active_energy_total
+                override_state: true
+              fossil_fuel_percentage:
+                show: false
+            clickable_entities: true
+            display_zero_lines: true
+            use_new_flow_rate_model: true
+            energy_date_selection: true
+            wh_decimals: 0
+            kwh_decimals: 2
+            min_flow_rate: 1
+            max_flow_rate: 6
+            max_expected_energy: 16000
+            min_expected_energy: 10
+            wh_kwh_threshold: 1000
+            title: Przepływ Energii
+          - type: entities
+            entities:
+              - type: custom:energy-entity-row
+                entity: sensor.grid_sell_active_energy_total_compensation
+                name: Wartość sprzedanej energii
+              - type: custom:energy-entity-row
+                entity: sensor.grid_buy_active_energy_total_cost
+                name: Koszty zakupu energii
+            state_color: false
+            title: Wartość wysłanej i pobranej energii
+            show_header_toggle: true
+          - show_name: true
+            show_icon: true
+            show_state: true
+            type: glance
+            entities:
+              - entity: sensor.hourly_optimisation_savings
+                name: Bieżąca 1H
+                icon: mdi:cash-check
+              - entity: sensor.daily_optimisation_savings
+                name: Dzisiaj
+                icon: mdi:cash-check
+              - entity: sensor.weekly_optimisation_savings
+                name: Ostatnie 7D
+                icon: mdi:cash-check
+              - entity: sensor.monthly_optimisation_savings
+                name: Ten miesiąc
+                icon: mdi:cash-check
+            title: Oszczędności z pracy magazynu
+            state_color: false
+      - type: grid
+        cards:
+          - type: custom:power-flow-card-plus
+            title: Dystrybucja Mocy
+            entities:
+              battery:
+                state_of_charge: sensor.solar_cube_ess_soc
+                show_state_of_charge: true
+                state_of_charge_unit: '%'
+                entity: sensor.solar_cube_ess_active_power
+                invert_state: false
+              solar:
+                secondary_info: {}
+                entity: sensor.solar_cube_pv_active_power
+              grid:
+                secondary_info:
+                  color_value: false
+                  display_zero: false
+                  accept_negative: false
+                entity: sensor.solar_cube_grid_active_power
+              fossil_fuel_percentage:
+                secondary_info: {}
+              home:
+                secondary_info: {}
+                entity: sensor.solar_cube_consumption_active_power
+                override_state: true
+            clickable_entities: true
+            display_zero_lines:
+              mode: show
+              transparency: 50
+              grey_color:
+                - 189
+                - 189
+                - 189
+            use_new_flow_rate_model: true
+            w_decimals: 0
+            kw_decimals: 1
+            min_flow_rate: 0.75
+            max_flow_rate: 6
+            max_expected_power: 2000
+            min_expected_power: 0.01
+            watt_threshold: 1000
+            transparency_zero_lines: 0
+          - type: custom:horizon-card
+            title: Położenie słońca
+            moon: true
+            refresh_period: 15
+            fields:
+              sunrise: true
+              sunset: true
+              dawn: true
+              noon: true
+              dusk: true
+              azimuth: true
+              sun_azimuth: false
+              moon_azimuth: false
+              elevation: true
+              sun_elevation: true
+              moon_elevation: false
+              moonrise: false
+              moonset: false
+              moon_phase: false
+            southern_flip: false
+            moon_phase_rotation: -10
+            language: en
+            time_format: language
+            number_format: language
+            latitude: 52.1139
+            longitude: 20.6336
+            elevation: 100
+            time_zone: Europe/Warsaw
+            debug_level: 0
+      - type: grid
+        cards:
+          - type: custom:apexcharts-card
+            header:
+              show: true
+              title: Odczyty z bieżącej godziny
+              show_states: true
+              colorize_states: true
+            graph_span: 12h
+            update_interval: 1min
+            span:
+              end: hour
+              offset: +0h
+            all_series_config:
+              stroke_width: 4
+              show:
+                legend_value: false
+            yaxis:
+              - id: first
+                decimals: 2
+                apex_config:
+                  tickAmount: 6
+              - id: second
+                opposite: true
+                decimals: 2
+                min: 0
+                apex_config:
+                  tickAmount: 6
+            series:
+              - entity: sensor.hourly_pv_energy
+                name: Produkcja
+                type: column
+                color: '#FF9800'
+                group_by:
+                  func: max
+                  duration: 1h
+                  fill: 'null'
+                yaxis_id: first
+              - entity: sensor.hourly_grid_buy_energy
+                name: Zakup Energii
+                type: column
+                group_by:
+                  func: max
+                  duration: 1h
+                  fill: 'null'
+                color: '#488EC2'
+                yaxis_id: first
+              - entity: sensor.hourly_grid_sell_energy
+                name: Sprzedaż Energii
+                type: column
+                color: '#A280DB'
+                group_by:
+                  func: max
+                  duration: 1h
+                  fill: 'null'
+                yaxis_id: first
+              - entity: sensor.hourly_consumption_energy
+                name: Konsumpcja
+                type: column
+                color: '#743029'
+                group_by:
+                  func: max
+                  duration: 1h
+                  fill: 'null'
+                yaxis_id: first
+              - entity: sensor.solar_cube_sell_energy_price
+                name: Cena Sprzedaży
+                type: line
+                curve: stepline
+                stroke_width: 3
+                color: '#08ff08'
+                extend_to: false
+                group_by:
+                  func: max
+                  duration: 1h
+                  fill: last
+                yaxis_id: second
+              - entity: sensor.solar_cube_buy_energy_price
+                name: Cena Zakupu
+                type: line
+                curve: stepline
+                stroke_width: 3
+                color: '#D0D3D5'
+                extend_to: false
+                group_by:
+                  func: max
+                  duration: 1h
+                  fill: last
+                yaxis_id: second
+              - entity: sensor.solar_cube_ess_soc
+                name: Naładowanie magazynu
+                type: line
+                curve: straight
+                stroke_width: 3
+                color: '#E91E63'
+                extend_to: false
+                unit: '*100%'
+                transform: return Number(x) / 100;
+                group_by:
+                  func: last
+                  duration: 1h
+                  fill: last
+                yaxis_id: second
+            apex_config:
+              chart:
+                height: 290
+          - type: custom:weather-chart-card
+            entity: weather.forecast_home
+            show_main: true
+            show_temperature: true
+            show_current_condition: true
+            show_attributes: false
+            show_time: false
+            show_time_seconds: false
+            show_day: false
+            show_date: false
+            show_humidity: false
+            show_pressure: false
+            show_wind_direction: true
+            show_wind_speed: true
+            show_sun: true
+            show_feels_like: false
+            show_dew_point: false
+            show_wind_gust_speed: false
+            show_visibility: false
+            show_last_changed: false
+            use_12hour_format: false
+            icons_size: '30'
+            animated_icons: true
+            icon_style: style1
+            autoscroll: true
+            forecast:
+              precipitation_type: rainfall
+              show_probability: false
+              labels_font_size: '11'
+              precip_bar_size: '100'
+              style: style2
+              show_wind_forecast: true
+              condition_icons: true
+              round_temp: false
+              type: daily
+              number_of_forecasts: '0'
+              disable_animation: false
+            units:
+              pressure: ''
+              speed: ''
+            title: Prognoza pogody
+    max_columns: 4
+    title: 'Solar Cube '

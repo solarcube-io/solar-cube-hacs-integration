@@ -1,0 +1,47 @@
+{
+  "version": 1,
+  "minor_version": 2,
+  "key": "energy",
+  "data": {
+    "energy_sources": [
+      {
+        "type": "grid",
+        "flow_from": [
+          {
+            "stat_energy_from": "sensor.grid_buy_active_energy_total",
+            "stat_cost": null,
+            "entity_energy_price": "sensor.solar_cube_buy_energy_price",
+            "number_energy_price": null
+          }
+        ],
+        "flow_to": [
+          {
+            "stat_energy_to": "sensor.grid_sell_active_energy_total",
+            "stat_compensation": null,
+            "entity_energy_price": "sensor.solar_cube_sell_energy_price",
+            "number_energy_price": null
+          }
+        ],
+        "cost_adjustment_day": 0.0,
+        "power": [
+          {
+            "stat_rate": "sensor.solar_cube_grid_active_power"
+          }
+        ]
+      },
+      {
+        "type": "battery",
+        "stat_energy_from": "sensor.ess_discharged_energy",
+        "stat_energy_to": "sensor.ess_charged_energy",
+        "stat_rate": "sensor.solar_cube_ess_active_power"
+      },
+      {
+        "type": "solar",
+        "stat_energy_from": "sensor.pv_active_energy_total",
+        "stat_rate": "sensor.pv_active_power"
+      }
+    ],
+    "device_consumption": [],
+    "device_consumption_water": []
+  }
+}

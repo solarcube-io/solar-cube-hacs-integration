@@ -1,0 +1,70 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Set up Solar Cube",
+        "description": "Connect Home Assistant to Solar Cube HEMS via InfluxDB 2.x.",
+        "data": {
+          "name": "Name",
+          "url": "InfluxDB URL",
+          "token": "InfluxDB token (optional)",
+          "org": "InfluxDB organization",
+          "data_bucket": "Data bucket (live measurements)",
+          "agents_bucket": "Agents bucket (forecasts/actions)",
+          "import_dashboards": "Import dashboards",
+          "run_frontend_installer": "Run the installer to download the required dependencies.",
+          "configure_energy_dashboard": "Configure Home Assistant Energy dashboard"
+        }
+      },
+      "reauth_confirm": {
+        "title": "Re-authenticate Solar Cube",
+        "description": "Your InfluxDB credentials are no longer valid. Please enter a new token.",
+        "data": {
+          "token": "InfluxDB token"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Failed to connect. Check the URL and network access.",
+      "invalid_auth": "Authentication failed. Check the token and organization.",
+      "missing_token": "No token provided. Enter a token or set influxdb_token in configuration.yaml.",
+      "unknown": "Unexpected error. See logs for details."
+    },
+    "abort": {
+      "already_configured": "Solar Cube is already configured.",
+      "reauth_successful": "Re-authentication was successful.",
+      "unknown": "Unexpected error. Please try again."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Solar Cube options",
+        "description": "Update connection settings. Leave the token empty to keep the current one.",
+        "data": {
+          "name": "Name",
+          "url": "InfluxDB URL",
+          "token": "InfluxDB token (optional)",
+          "org": "InfluxDB organization",
+          "data_bucket": "Data bucket (live measurements)",
+          "agents_bucket": "Agents bucket (forecasts/actions)",
+          "import_dashboards": "Import dashboards",
+          "run_frontend_installer": "Run the installer to download the required dependencies.",
+          "configure_energy_dashboard": "Configure Home Assistant Energy dashboard"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Failed to connect. Check the URL and network access.",
+      "invalid_auth": "Authentication failed. Check the token and organization.",
+      "unknown": "Unexpected error. See logs for details."
+    }
+  }
+  ,
+  "issues": {
+    "restart_required": {
+      "title": "Restart required",
+      "description": "Restart of Home Assistant is required to finish download/update of {integration}. Click submit to restart now. After the restart, hard-refresh your browser (Ctrl+F5 or Cmd+Shift+R) to load the updated frontend resources."
+    }
+  }
+}

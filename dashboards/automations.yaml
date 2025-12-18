@@ -1,0 +1,24 @@
+- id: solar_cube_meteoalert
+  alias: Meteoalert
+  description: Create a new calendar event when a new Meteoalert is issued
+  triggers:
+  - entity_id:
+    - binary_sensor.meteoalarm
+    from:
+    to: 'on'
+    trigger: state
+  conditions: []
+  actions:
+  - target:
+      entity_id: calendar.solar_cube
+    metadata: {}
+    data:
+      start_date_time: '{{ as_datetime(state_attr(''binary_sensor.meteoalarm'', ''effective'')).strftime(''%Y-%m-%d
+        %H:%M:%S'') }}'
+      end_date_time: '{{ as_datetime(state_attr(''binary_sensor.meteoalarm'', ''expires'')).strftime(''%Y-%m-%d
+        %H:%M:%S'') }}'
+      summary: '{{ state_attr(''binary_sensor.meteoalarm'', ''instruction'') }}'
+      description: '{{ state_attr(''binary_sensor.meteoalarm'', ''description'') }}'
+      location: '{{ state_attr(''binary_sensor.meteoalarm'', ''headline'') }}'
+    action: calendar.create_event
+  mode: single

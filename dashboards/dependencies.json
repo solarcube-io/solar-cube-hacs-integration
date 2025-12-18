@@ -1,0 +1,12 @@
+[
+  {"name": "Energy Period Selector Plus", "repository": "flixlix/energy-period-selector-plus"},
+  {"name": "Energy Flow Card Plus", "repository": "flixlix/energy-flow-card-plus"},
+  {"name": "Energy Entity Row", "repository": "zeronounours/lovelace-energy-entity-row"},
+  {"name": "Power Flow Card Plus", "repository": "flixlix/power-flow-card-plus"},
+  {"name": "Horizon Card", "repository": "rejuvenate/lovelace-horizon-card"},
+  {"name": "ApexCharts Card", "repository": "RomRider/apexcharts-card"},
+  {"name": "Weather Chart Card", "repository": "mlamberts78/weather-chart-card"},
+  {"name": "History Explorer Card", "repository": "alexarch21/history-explorer-card"},
+  {"name": "Meteoalarm Card", "repository": "MrBartusek/MeteoalarmCard"},
+  {"name": "Atomic Calendar Revive", "repository": "totaldebug/atomic-calendar-revive"}
+]

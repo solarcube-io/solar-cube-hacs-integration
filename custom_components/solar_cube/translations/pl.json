@@ -1,0 +1,70 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Konfiguracja Solar Cube",
+        "description": "Połącz Home Assistant z Solar Cube HEMS przez InfluxDB 2.x.",
+        "data": {
+          "name": "Nazwa",
+          "url": "Adres URL InfluxDB",
+          "token": "Token InfluxDB (opcjonalnie)",
+          "org": "Organizacja InfluxDB",
+          "data_bucket": "Bucket danych (pomiary bieżące)",
+          "agents_bucket": "Bucket agents (prognozy/akcje)",
+          "import_dashboards": "Importuj dashboardy",
+          "run_frontend_installer": "Uruchom instalator, aby pobrać wymagane zależności.",
+          "configure_energy_dashboard": "Skonfiguruj pulpit Energii (Home Assistant)"
+        }
+      },
+      "reauth_confirm": {
+        "title": "Ponowna autoryzacja Solar Cube",
+        "description": "Twoje dane logowania do InfluxDB nie są już poprawne. Wprowadź nowy token.",
+        "data": {
+          "token": "Token InfluxDB"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Nie można się połączyć. Sprawdź adres URL i dostęp sieciowy.",
+      "invalid_auth": "Błąd autoryzacji. Sprawdź token i organizację.",
+      "missing_token": "Nie podano tokena. Wprowadź token lub ustaw influxdb_token w configuration.yaml.",
+      "unknown": "Nieoczekiwany błąd. Sprawdź logi, aby uzyskać szczegóły."
+    },
+    "abort": {
+      "already_configured": "Solar Cube jest już skonfigurowany.",
+      "reauth_successful": "Ponowna autoryzacja zakończona powodzeniem.",
+      "unknown": "Nieoczekiwany błąd. Spróbuj ponownie."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Opcje Solar Cube",
+        "description": "Zaktualizuj ustawienia połączenia. Pozostaw token pusty, aby zachować obecny.",
+        "data": {
+          "name": "Nazwa",
+          "url": "Adres URL InfluxDB",
+          "token": "Token InfluxDB (opcjonalnie)",
+          "org": "Organizacja InfluxDB",
+          "data_bucket": "Bucket danych (pomiary bieżące)",
+          "agents_bucket": "Bucket agents (prognozy/akcje)",
+          "import_dashboards": "Importuj dashboardy",
+          "run_frontend_installer": "Uruchom instalator, aby pobrać wymagane zależności.",
+          "configure_energy_dashboard": "Skonfiguruj pulpit Energii (Home Assistant)"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Nie można się połączyć. Sprawdź adres URL i dostęp sieciowy.",
+      "invalid_auth": "Błąd autoryzacji. Sprawdź token i organizację.",
+      "unknown": "Nieoczekiwany błąd. Sprawdź logi, aby uzyskać szczegóły."
+    }
+  }
+  ,
+  "issues": {
+    "restart_required": {
+      "title": "Wymagany restart",
+      "description": "Aby dokończyć pobieranie/aktualizację {integration}, wymagany jest restart Home Assistant. Kliknij Wyślij, aby zrestartować teraz. Po restarcie wykonaj twarde odświeżenie przeglądarki (Ctrl+F5 lub Cmd+Shift+R), aby wczytać zaktualizowane zasoby frontendu."
+    }
+  }
+}

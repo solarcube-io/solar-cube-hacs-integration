@@ -1,0 +1,395 @@
+views:
+  - type: sections
+    max_columns: 3
+    sections:
+      - type: grid
+        cards:
+          - type: heading
+            heading: Dzisiejsza produkcja i zużycie energii
+          - type: custom:apexcharts-card
+            chart_type: donut
+            update_interval: 1m
+            all_series_config:
+              unit: kWh
+              float_precision: 2
+            span:
+              end: day
+              offset: '-0h'
+            header:
+              show: true
+              show_states: true
+              colorize_states: false
+            series:
+              - entity: sensor.daily_pv_energy
+                name: Zarejestrowana produkcja PV
+                color: '#ff9800'
+                group_by:
+                  func: last
+                  duration: 1day
+                show:
+                  in_header: false
+              - entity: sensor.solar_cube_energy_forecast
+                name: Pozostała produkcja PV dzisiaj
+                data_generator: |
+                  return entity.attributes.forecast.map(item => {
+                    return [new Date(item.dt).getTime(), item.pf];
+                  });
+                show:
+                  datalabels: false
+                  in_header: false
+                color: '#ffd800'
+                group_by:
+                  func: sum
+                  duration: 1day
+            apex_config:
+              chart:
+                height: 385
+              plotOptions:
+                pie:
+                  donut:
+                    labels:
+                      show: true
+                      total:
+                        show: true
+                        label: Razem
+                        formatter: |
+                          EVAL:function(w) {
+                            return w.globals.seriesTotals.reduce((a, b) => {return (a + b)} , 0).toFixed(1) + " kWh"
+                            }
+              tooltip:
+                enabled: false
+          - type: custom:apexcharts-card
+            chart_type: donut
+            update_interval: 1m
+            all_series_config:
+              unit: kWh
+              float_precision: 2
+            span:
+              end: day
+              offset: '-0h'
+            header:
+              show: true
+              show_states: true
+              colorize_states: false
+            series:
+              - entity: sensor.daily_consumption_energy
+                name: Dzisiejsze zarejestrowane zużycie prądu
+                color: '#743029'
+                group_by:
+                  func: last
+                  duration: 1day
+                show:
+                  in_header: false
+                float_precision: 2
+              - entity: sensor.solar_cube_energy_forecast
+                name: Pozostałe zużycie prądu dzisiaj
+                data_generator: |
+                  return entity.attributes.forecast.map(item => {
+                    const roundedValue = Math.round(item.cf * 100) / 100;
+                    return [new Date(item.dt).getTime(), roundedValue];
+                  });
+                show:
+                  in_header: false
+                color: '#9a433b'
+                group_by:
+                  func: sum
+                  duration: 1day
+                float_precision: 2
+            apex_config:
+              chart:
+                height: 385
+              plotOptions:
+                pie:
+                  donut:
+                    labels:
+                      show: true
+                      total:
+                        show: true
+                        label: Razem
+                        formatter: |
+                          EVAL:function(w) {
+                            return w.globals.seriesTotals.reduce((a, b) => {return (a + b)} , 0).toFixed(1) + " kWh"
+                            }
+                        float_precision: 1
+              tooltip:
+                enabled: false
+      - type: grid
+        cards:
+          - type: heading
+            heading: Alert pogodowy oraz prognoza ładowania i cen energii
+          - type: custom:meteoalarm-card
+            entities:
+              - entity: binary_sensor.meteoalarm
+            integration: meteoalarm
+            override_headline: true
+          - type: custom:atomic-calendar-revive
+            enableModeChange: true
+            entities:
+              - entity: calendar.solar_cube
+                icon: ''
+          - type: custom:apexcharts-card
+            header:
+              show: false
+              title: Prognoza na jutro
+            graph_span: 26h
+            update_interval: 1m
+            span:
+              end: hour
+              offset: +24h
+            all_series_config:
+              show:
+                legend_value: false
+                datalabels: false
+            now:
+              show: true
+              color: red
+              label: Now
+            yaxis:
+              - id: first
+                decimals: 2
+                apex_config:
+                  tickAmount: 8
+                min: 0
+              - id: second
+                opposite: true
+                decimals: 2
+                min: 0
+                apex_config:
+                  tickAmount: 8
+            series:
+              - entity: sensor.solar_cube_energy_forecast
+                name: Poziom naładowania (%)
+                data_generator: |
+                  return (entity?.attributes?.forecast ?? [])
+                    .map(item => {
+                      const v = item?.sf;
+
+                      // skip null/undefined/empty/"N/a"
+                      if (v === null || v === undefined) return null;
+                      if (typeof v === "string" && (v.trim() === "" || v.trim().toLowerCase() === "n/a")) return null;
+
+                      // parse number (handles numeric strings too)
+                      const num = typeof v === "number" ? v : Number(String(v).replace(",", "."));
+                      if (!Number.isFinite(num)) return null;
+
+                      // validate timestamp
+                      const ts = new Date(item?.dt).getTime();
+                      if (!Number.isFinite(ts)) return null;
+
+                      return [ts, Math.round(num * 100)];
+                    })
+                    .filter(Boolean);
+                type: line
+                curve: stepline
+                invert: false
+                stroke_width: 4
+                color: '#FF80AB'
+                extend_to: false
+                group_by:
+                  func: last
+                  duration: 1h
+                  fill: 'null'
+                fill_raw: 'null'
+                yaxis_id: first
+              - entity: sensor.solar_cube_energy_forecast
+                name: Prognoza produckji PV (kWh)
+                data_generator: |
+                  return (entity?.attributes?.forecast ?? [])
+                    .map(item => {
+                      const v = item?.pf;
+
+                      // skip null/undefined/empty/"N/a"
+                      if (v === null || v === undefined) return null;
+                      if (typeof v === "string" && (v.trim() === "" || v.trim().toLowerCase() === "n/a")) return null;
+
+                      // parse number (handles numeric strings too)
+                      const num = typeof v === "number" ? v : Number(String(v).replace(",", "."));
+                      if (!Number.isFinite(num)) return null;
+
+                      // validate timestamp
+                      const ts = new Date(item?.dt).getTime();
+                      if (!Number.isFinite(ts)) return null;
+
+                      return [ts, num];
+                    })
+                    .filter(Boolean);
+                type: column
+                invert: false
+                stroke_width: 4
+                color: '#ffd800'
+                extend_to: false
+                group_by:
+                  func: sum
+                  duration: 1h
+                  fill: 'null'
+                fill_raw: 'null'
+                yaxis_id: second
+              - entity: sensor.solar_cube_energy_forecast
+                name: Taryfa zakupu energii (per kWh)
+                data_generator: |
+                  return (entity?.attributes?.forecast ?? [])
+                    .map(item => {
+                      const v = item?.bp;
+
+                      // skip null/undefined/empty/"N/a"
+                      if (v === null || v === undefined) return null;
+                      if (typeof v === "string" && (v.trim() === "" || v.trim().toLowerCase() === "n/a")) return null;
+
+                      // parse number (handles numeric strings too)
+                      const num = typeof v === "number" ? v : Number(String(v).replace(",", "."));
+                      if (!Number.isFinite(num)) return null;
+
+                      // validate timestamp
+                      const ts = new Date(item?.dt).getTime();
+                      if (!Number.isFinite(ts)) return null;
+
+                      return [ts, num];
+                    })
+                    .filter(Boolean);
+                type: line
+                curve: stepline
+                invert: false
+                stroke_width: 4
+                color: '#D0D3D5'
+                extend_to: false
+                group_by:
+                  func: last
+                  duration: 1h
+                  fill: 'null'
+                fill_raw: 'null'
+                yaxis_id: second
+              - entity: sensor.solar_cube_energy_forecast
+                name: Dynamiczna cena sprzedaży (per kWh)
+                data_generator: |
+                  return (entity?.attributes?.forecast ?? [])
+                    .map(item => {
+                      const v = item?.sp;
+
+                      // skip null/undefined/empty/"N/a"
+                      if (v === null || v === undefined) return null;
+                      if (typeof v === "string" && (v.trim() === "" || v.trim().toLowerCase() === "n/a")) return null;
+
+                      // parse number (handles numeric strings too)
+                      const num = typeof v === "number" ? v : Number(String(v).replace(",", "."));
+                      if (!Number.isFinite(num)) return null;
+
+                      // validate timestamp
+                      const ts = new Date(item?.dt).getTime();
+                      if (!Number.isFinite(ts)) return null;
+
+                      return [ts, num];
+                    })
+                    .filter(Boolean);
+                type: line
+                curve: stepline
+                invert: false
+                stroke_width: 4
+                color: '#08ff08'
+                extend_to: false
+                group_by:
+                  func: last
+                  duration: 1h
+                  fill: 'null'
+                fill_raw: 'null'
+                yaxis_id: second
+            apex_config:
+              chart:
+                height: 395
+                width: 90%
+      - type: grid
+        cards:
+          - type: heading
+            heading: Prognoza produkcji i zużycia energii na jutro
+            heading_style: title
+          - type: custom:apexcharts-card
+            chart_type: donut
+            update_interval: 1m
+            all_series_config:
+              unit: kWh
+              float_precision: 2
+            span:
+              end: day
+              offset: +24h
+            header:
+              show: false
+              show_states: false
+              colorize_states: false
+            series:
+              - entity: sensor.solar_cube_energy_forecast
+                name: Prognozowana producja PV (kWh)
+                data_generator: |
+                  return entity.attributes.forecast.map(item => {
+                    return [new Date(item.dt).getTime(), item.pf];
+                  });
+                show:
+                  datalabels: false
+                color: '#ffd800'
+                group_by:
+                  func: sum
+                  duration: 1day
+            apex_config:
+              chart:
+                height: 385
+              plotOptions:
+                pie:
+                  donut:
+                    labels:
+                      show: true
+                      total:
+                        show: true
+                        label: Razem
+                        formatter: |
+                          EVAL:function(w) {
+                            return w.globals.seriesTotals.reduce((a, b) => {return (a + b)} , 0).toFixed(1) + " kWh"
+                            }
+              tooltip:
+                enabled: false
+          - type: custom:apexcharts-card
+            chart_type: donut
+            update_interval: 1m
+            all_series_config:
+              unit: kWh
+              float_precision: 2
+            span:
+              end: day
+              offset: +24h
+            header:
+              show: false
+              show_states: false
+              colorize_states: false
+            series:
+              - entity: sensor.solar_cube_energy_forecast
+                name: Prognozowane zużycie energii (kWh)
+                data_generator: |
+                  return entity.attributes.forecast.map(item => {
+                    return [new Date(item.dt).getTime(), item.cf];
+                  });
+                type: column
+                invert: false
+                show:
+                  datalabels: false
+                color: '#9a433b'
+                group_by:
+                  func: sum
+                  duration: 1day
+            apex_config:
+              chart:
+                height: 385
+              plotOptions:
+                pie:
+                  donut:
+                    labels:
+                      show: true
+                      total:
+                        show: true
+                        label: Razem
+                        formatter: |
+                          EVAL:function(w) {
+                            return w.globals.seriesTotals.reduce((a, b) => {return (a + b)} , 0).toFixed(1) + " kWh"
+                            }
+              tooltip:
+                enabled: false
+    cards: []
+    icon: mdi:view-dashboard-outline
+    subview: false
+    title: Prognoza produkcji i zużycia
