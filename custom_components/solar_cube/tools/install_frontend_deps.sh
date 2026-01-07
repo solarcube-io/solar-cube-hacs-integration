@@ -341,7 +341,7 @@ add_resource "$url"
 url="$(install_release "flixlix/power-flow-card-plus" "v0.2.6" "power-flow-card-plus" 'power-flow-card-plus.*\\.js(\\.gz)?$')" || { failures=$((failures+1)); url=""; }
 add_resource "$url"
 
-url="$(install_release "rejuvenate/lovelace-horizon-card" "v1.3.1" "lovelace-horizon-card" '(lovelace-horizon-card|horizon).*\\.js(\\.gz)?$')" || { failures=$((failures+1)); url=""; }
+url="$(install_release "rejuvenate/lovelace-horizon-card" "v1.4.0" "lovelace-horizon-card" '(lovelace-horizon-card|horizon).*\\.js(\\.gz)?$')" || { failures=$((failures+1)); url=""; }
 add_resource "$url"
 
 url="$(install_release "totaldebug/atomic-calendar-revive" "v10.0.0" "atomic-calendar-revive" 'atomic-calendar-revive.*\\.js(\\.gz)?$')" || { failures=$((failures+1)); url=""; }
@@ -368,7 +368,7 @@ add_resource "$url"
 url="$(install_release "zeronounours/lovelace-energy-entity-row" "v1.2.0" "energy-entity-row" 'energy-entity-row.*\\.js(\\.gz)?$')" || { failures=$((failures+1)); url=""; }
 add_resource "$url"
 
-url="$(install_release "RomRider/apexcharts-card" "v2.1.2" "apexcharts-card" 'apexcharts-card.*\\.js(\\.gz)?$')" || { failures=$((failures+1)); url=""; }
+url="$(install_release "RomRider/apexcharts-card" "v2.2.3" "apexcharts-card" 'apexcharts-card.*\\.js(\\.gz)?$')" || { failures=$((failures+1)); url=""; }
 add_resource "$url"
 
 log ""
