@@ -35,9 +35,10 @@ Install via HACS (recommended — now included in the official HACS store):
 6. The integration will create the sensors automatically. By default it also registers the bundled dashboards in the sidebar (using the shipped YAML files under `dashboards/`). If you prefer to manage dashboards manually, disable **Import dashboards** in the setup form and then import the YAML files yourself.
 7. Dashboard custom cards: the integration can optionally run a local installer hook to register/repair the required Lovelace resources. Leave **Run local frontend installer hook (advanced)** enabled during setup (default), or manage the resources yourself.
 
-**WARNING — Automatic Frontend Resources**
 
-- **What happens:** If you enable the local frontend installer hook the integration will automatically download a set of third-party Lovelace resources (JavaScript modules) and place them under `/hacsfiles/` on your Home Assistant configuration directory. The installer will also attempt to auto-add these resources to Home Assistant's Lovelace resource storage.
+**BIG WARNING — Automatic Frontend Resources**
+
+- **What happens:** If you enable the local frontend installer hook the integration will automatically download a set of third-party Lovelace resources (JavaScript modules) and place them under `/config/www/solar_cube` on your Home Assistant configuration directory. The installer will also attempt to auto-add these resources to Home Assistant's Lovelace resource storage using URLs under `/local/solar_cube/`.
 - **Why this matters:** These are external projects maintained by third parties. You should review the list below and confirm you are happy with the specified versions before enabling the installer.
 - **Resources & versions downloaded:**
    - kalkih/mini-graph-card — mini-graph-card v0.13.0
@@ -52,6 +53,7 @@ Install via HACS (recommended — now included in the official HACS store):
    - flixlix/energy-period-selector-plus — energy-period-selector-plus v0.2.3
    - zeronounours/lovelace-energy-entity-row — lovelace-energy-entity-row v1.2.0
    - RomRider/apexcharts-card — apexcharts-card v2.2.3
+- **Cache-busting / avoiding 404s on update:** The installer appends a `?v=` parameter to each resource URL using the integration manifest version when available (fallback: timestamp). Example: `/local/solar_cube/apexcharts-card/apexcharts-card.js?v=2026.01.15.123456`.
 - **If you prefer to manage manually:** Do not enable the installer; instead add the listed resources manually in Home Assistant → Settings → Dashboards → Resources. After manual installation, hard-refresh the browser and restart Home Assistant if necessary.
 
 

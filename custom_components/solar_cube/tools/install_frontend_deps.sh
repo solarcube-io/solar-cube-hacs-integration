@@ -6,10 +6,29 @@ warn() { printf '%s\n' "WARN: $*" >&2; }
 err() { printf '%s\n' "ERROR: $*" >&2; }
 
 CONFIG_DIR="${CONFIG_DIR:-/config}"
-COMMUNITY_DIR="$CONFIG_DIR/www/community"
+COMMUNITY_DIR="$CONFIG_DIR/www/solar_cube"
 TMP_DIR="${TMPDIR:-/tmp}/solar_cube_frontend_deps"
 
 mkdir -p "$COMMUNITY_DIR" "$TMP_DIR"
+
+# Determine resource URL version for cache-busting. Prefer the integration manifest
+# version if available, otherwise fall back to a timestamp.
+VERSION=""
+MANIFEST_PATH="$CONFIG_DIR/custom_components/solar_cube/manifest.json"
+if [ -f "$MANIFEST_PATH" ]; then
+   VERSION="$(py - "$MANIFEST_PATH" <<'PY'
+import json,sys
+p=sys.argv[1]
+try:
+   print(json.load(open(p, 'r', encoding='utf-8')).get('version',''))
+except Exception:
+   pass
+PY
+)"
+fi
+if [ -z "$VERSION" ]; then
+   VERSION="$(date +%Y.%m.%d.%H%M%S)"
+fi
 
 py() {
    # Prefer python3 when present.
@@ -138,8 +157,8 @@ install_tag_archive() {
 
    installed="$(gunzip_if_needed "$out_guess")"
    base="$(basename "$installed")"
-   log "Installed: /hacsfiles/$folder/$base"
-   printf '%s' "/hacsfiles/$folder/$base"
+   log "Installed: /local/solar_cube/$folder/$base"
+   printf '%s' "/local/solar_cube/$folder/$base?v=$VERSION"
 }
 
 gh_default_branch() {
@@ -284,8 +303,8 @@ install_release() {
    installed="$(gunzip_if_needed "$installed")"
    base="$(basename "$installed")"
 
-   log "Installed: /hacsfiles/$folder/$base"
-   printf '%s' "/hacsfiles/$folder/$base"
+   log "Installed: /local/solar_cube/$folder/$base"
+   printf '%s' "/local/solar_cube/$folder/$base?v=$VERSION"
 }
 
 install_repo_archive() {
@@ -310,8 +329,8 @@ install_repo_archive() {
 
    installed="$(gunzip_if_needed "$out_guess")"
    base="$(basename "$installed")"
-   log "Installed: /hacsfiles/$folder/$base"
-   printf '%s' "/hacsfiles/$folder/$base"
+   log "Installed: /local/solar_cube/$folder/$base"
+   printf '%s' "/local/solar_cube/$folder/$base?v=$VERSION"
 }
 
 failures=0
