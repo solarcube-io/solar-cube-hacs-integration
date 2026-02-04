@@ -16,7 +16,9 @@ class _RestartRequiredFlow(FlowHandler):
     def __init__(self, hass: HomeAssistant) -> None:
         self.hass = hass
 
-    async def async_step_init(self, user_input: dict | None = None) -> FlowResult:
+    async def async_step_init(
+        self, user_input: dict | None = None
+    ) -> FlowResult:
         if user_input is not None:
             await self.hass.services.async_call(
                 "homeassistant",

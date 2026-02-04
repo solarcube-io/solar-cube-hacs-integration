@@ -5,7 +5,10 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Any
 
-from homeassistant.components.sensor import SensorEntity, SensorEntityDescription
+from homeassistant.components.sensor import (
+    SensorEntity,
+    SensorEntityDescription,
+)
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_NAME
 from homeassistant.core import HomeAssistant
@@ -52,14 +55,19 @@ async def _async_cleanup_orphaned_entities(hass: HomeAssistant) -> None:
     """
 
     ent_reg = er.async_get(hass)
-    active_entry_ids = {e.entry_id for e in hass.config_entries.async_entries(DOMAIN)}
+    active_entry_ids = {
+        e.entry_id for e in hass.config_entries.async_entries(DOMAIN)
+    }
 
     # Iterate all registry entries and remove those created by our platform
     # that belong to config entries that no longer exist.
     for entity_entry in list(ent_reg.entities.values()):
         if entity_entry.platform != DOMAIN:
             continue
-        if entity_entry.config_entry_id and entity_entry.config_entry_id not in active_entry_ids:
+        if (
+            entity_entry.config_entry_id
+            and entity_entry.config_entry_id not in active_entry_ids
+        ):
             ent_reg.async_remove(entity_entry.entity_id)
 
 
@@ -77,12 +85,20 @@ async def async_setup_entry(
     await _async_cleanup_orphaned_entities(hass)
 
     hass_currency_raw = getattr(hass.config, "currency", None)
-    hass_currency = hass_currency_raw.strip() if isinstance(hass_currency_raw, str) and hass_currency_raw.strip() else None
+    hass_currency = (
+        hass_currency_raw.strip()
+        if isinstance(hass_currency_raw, str) and hass_currency_raw.strip()
+        else None
+    )
 
     data = hass.data[DOMAIN][entry.entry_id]
     data_coordinator: SolarCubeDataCoordinator = data["data_coordinator"]
-    forecast_coordinator: SolarCubeForecastCoordinator = data["forecast_coordinator"]
-    optimal_coordinator: SolarCubeOptimalActionsCoordinator = data["optimal_coordinator"]
+    forecast_coordinator: SolarCubeForecastCoordinator = data[
+        "forecast_coordinator"
+    ]
+    optimal_coordinator: SolarCubeOptimalActionsCoordinator = data[
+        "optimal_coordinator"
+    ]
 
     sensors: list[SensorEntity] = []
     for definition in data_coordinator.sensor_definitions:
@@ -100,7 +116,11 @@ async def async_setup_entry(
             device_class=device_class,
             state_class=definition.get("state_class"),
         )
-        sensors.append(SolarCubeValueSensor(data_coordinator, description, entry, definition))
+        sensors.append(
+            SolarCubeValueSensor(
+                data_coordinator, description, entry, definition
+            )
+        )
 
     sensors.append(SolarCubeForecastSensor(forecast_coordinator, entry))
     sensors.append(SolarCubeOptimalActionsSensor(optimal_coordinator, entry))
@@ -248,12 +268,32 @@ async def async_setup_entry(
 
     # Wh → kWh totals (equivalent to the YAML template sensors).
     kwh_totals: list[tuple[str, str, str]] = [
-        ("ess_discharged_energy", "ESS Discharged Energy", "ess_discharge_energy"),
+        (
+            "ess_discharged_energy",
+            "ESS Discharged Energy",
+            "ess_discharge_energy",
+        ),
         ("ess_charged_energy", "ESS Charged Energy", "ess_charge_energy"),
-        ("grid_buy_active_energy_total", "Grid Buy Active Energy Total", "grid_buy_active_energy"),
-        ("grid_sell_active_energy_total", "Grid Sell Active Energy Total", "grid_sell_active_energy"),
-        ("pv_active_energy_total", "PV Active Energy Total", "pv_active_energy"),
-        ("consumption_active_energy_total", "Consumption Active Energy Total", "consumption_active_energy"),
+        (
+            "grid_buy_active_energy_total",
+            "Grid Buy Active Energy Total",
+            "grid_buy_active_energy",
+        ),
+        (
+            "grid_sell_active_energy_total",
+            "Grid Sell Active Energy Total",
+            "grid_sell_active_energy",
+        ),
+        (
+            "pv_active_energy_total",
+            "PV Active Energy Total",
+            "pv_active_energy",
+        ),
+        (
+            "consumption_active_energy_total",
+            "Consumption Active Energy Total",
+            "consumption_active_energy",
+        ),
     ]
     for key, name, source_key in kwh_totals:
         sensors.append(
@@ -371,7 +411,9 @@ async def async_setup_entry(
     async_add_entities(sensors)
 
 
-class SolarCubeValueSensor(CoordinatorEntity[SolarCubeDataCoordinator], SensorEntity):
+class SolarCubeValueSensor(
+    CoordinatorEntity[SolarCubeDataCoordinator], SensorEntity
+):
     """Representation of a scalar InfluxDB-backed sensor."""
 
     _attr_should_poll = False
@@ -392,20 +434,30 @@ class SolarCubeValueSensor(CoordinatorEntity[SolarCubeDataCoordinator], SensorEn
 
     @property
     def native_value(self):
-        return _round_float(self.coordinator.data.get(self.entity_description.key))
+        val = self.coordinator.data.get(self.entity_description.key)
+        if val is not None and (division := self._definition.get("division")):
+            try:
+                val = float(val) / division
+            except (TypeError, ValueError):
+                pass
+        return _round_float(val)
 
     @property
     def extra_state_attributes(self):
         return {"last_refresh": self.coordinator.data.get("_last_update")}
 
 
-class SolarCubeForecastSensor(CoordinatorEntity[SolarCubeForecastCoordinator], SensorEntity):
+class SolarCubeForecastSensor(
+    CoordinatorEntity[SolarCubeForecastCoordinator], SensorEntity
+):
     """Sensor exposing forecast payload as attribute."""
 
     _attr_icon = "mdi:weather-sunny-alert"
     _attr_should_poll = False
 
-    def __init__(self, coordinator: SolarCubeForecastCoordinator, entry: ConfigEntry) -> None:
+    def __init__(
+        self, coordinator: SolarCubeForecastCoordinator, entry: ConfigEntry
+    ) -> None:
         super().__init__(coordinator)
         prefix = _unique_id_prefix(entry)
         self._attr_unique_id = f"{prefix}_forecast"
@@ -422,13 +474,19 @@ class SolarCubeForecastSensor(CoordinatorEntity[SolarCubeForecastCoordinator], S
         return {"forecast": self.coordinator.data}
 
 
-class SolarCubeOptimalActionsSensor(CoordinatorEntity[SolarCubeOptimalActionsCoordinator], SensorEntity):
+class SolarCubeOptimalActionsSensor(
+    CoordinatorEntity[SolarCubeOptimalActionsCoordinator], SensorEntity
+):
     """Sensor exposing optimal actions as attribute."""
 
     _attr_icon = "mdi:lightning-bolt"
     _attr_should_poll = False
 
-    def __init__(self, coordinator: SolarCubeOptimalActionsCoordinator, entry: ConfigEntry) -> None:
+    def __init__(
+        self,
+        coordinator: SolarCubeOptimalActionsCoordinator,
+        entry: ConfigEntry,
+    ) -> None:
         super().__init__(coordinator)
         prefix = _unique_id_prefix(entry)
         self._attr_unique_id = f"{prefix}_optimal_actions"
@@ -445,7 +503,9 @@ class SolarCubeOptimalActionsSensor(CoordinatorEntity[SolarCubeOptimalActionsCoo
         return {"optimal_actions": self.coordinator.data}
 
 
-class SolarCubeForecastPointSensor(CoordinatorEntity[SolarCubeForecastCoordinator], SensorEntity):
+class SolarCubeForecastPointSensor(
+    CoordinatorEntity[SolarCubeForecastCoordinator], SensorEntity
+):
     _attr_should_poll = False
 
     def __init__(
@@ -476,7 +536,9 @@ class SolarCubeForecastPointSensor(CoordinatorEntity[SolarCubeForecastCoordinato
         return _round_float(item.get(self._value_key))
 
 
-class SolarCubeOptimalActionPointSensor(CoordinatorEntity[SolarCubeOptimalActionsCoordinator], SensorEntity):
+class SolarCubeOptimalActionPointSensor(
+    CoordinatorEntity[SolarCubeOptimalActionsCoordinator], SensorEntity
+):
     _attr_should_poll = False
 
     def __init__(
@@ -507,7 +569,9 @@ class SolarCubeOptimalActionPointSensor(CoordinatorEntity[SolarCubeOptimalAction
         return _round_float(item.get(self._value_key))
 
 
-class SolarCubeKwhTotalSensor(CoordinatorEntity[SolarCubeDataCoordinator], SensorEntity):
+class SolarCubeKwhTotalSensor(
+    CoordinatorEntity[SolarCubeDataCoordinator], SensorEntity
+):
     _attr_should_poll = False
     _attr_native_unit_of_measurement = "kWh"
     _attr_device_class = "energy"
@@ -586,12 +650,20 @@ class SolarCubePeriodMeterSensor(
         attrs = last.attributes or {}
         try:
             baseline_raw = attrs.get("_baseline")
-            self._baseline = float(baseline_raw) if isinstance(baseline_raw, (int, float, str)) else None
+            self._baseline = (
+                float(baseline_raw)
+                if isinstance(baseline_raw, (int, float, str))
+                else None
+            )
         except (TypeError, ValueError):
             self._baseline = None
         try:
             last_total_raw = attrs.get("_last_total")
-            self._last_total = float(last_total_raw) if isinstance(last_total_raw, (int, float, str)) else None
+            self._last_total = (
+                float(last_total_raw)
+                if isinstance(last_total_raw, (int, float, str))
+                else None
+            )
         except (TypeError, ValueError):
             self._last_total = None
         pk = attrs.get("_period_key")
@@ -604,20 +676,27 @@ class SolarCubePeriodMeterSensor(
         if self._period == "hourly":
             start = local_now.replace(minute=0, second=0, microsecond=0)
         elif self._period == "daily":
-            start = local_now.replace(hour=0, minute=0, second=0, microsecond=0)
+            start = local_now.replace(
+                hour=0, minute=0, second=0, microsecond=0
+            )
         elif self._period == "weekly":
             # Week starts Sunday 00:00 local (matches the provided cron: 0 0 * * 7).
             days_since_sunday = (local_now.weekday() + 1) % 7
             d = (local_now - timedelta(days=days_since_sunday)).date()
             start = datetime(d.year, d.month, d.day, tzinfo=local_now.tzinfo)
         elif self._period == "monthly":
-            start = local_now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+            start = local_now.replace(
+                day=1, hour=0, minute=0, second=0, microsecond=0
+            )
         else:
             start = local_now
         return start.isoformat()
 
     def _convert(self, value: float) -> float:
-        if self._source_unit == "Wh" and self._attr_native_unit_of_measurement == "kWh":
+        if (
+            self._source_unit == "Wh"
+            and self._attr_native_unit_of_measurement == "kWh"
+        ):
             return value / 1000.0
         return value
 

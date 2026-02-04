@@ -24,7 +24,9 @@ DASHBOARD_FILES = {
 
 # Dashboards and dependencies are bundled with the integration so they are available
 # even when installed via HACS (which typically installs only custom_components/*).
-DASHBOARD_DEPENDENCIES_PATH = Path(__file__).parent / "dashboards" / "dependencies.json"
+DASHBOARD_DEPENDENCIES_PATH = (
+    Path(__file__).parent / "dashboards" / "dependencies.json"
+)
 
 UPDATE_INTERVAL = timedelta(seconds=30)
 FORECAST_UPDATE_INTERVAL = timedelta(minutes=30)
