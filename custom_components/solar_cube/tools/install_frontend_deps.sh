@@ -11,6 +11,15 @@ TMP_DIR="${TMPDIR:-/tmp}/solar_cube_frontend_deps"
 
 mkdir -p "$COMMUNITY_DIR" "$TMP_DIR"
 
+# Prefer python3 when present. Define helper early so it can be used below.
+py() {
+   if command -v python3 >/dev/null 2>&1; then
+      python3 "$@"
+   else
+      python "$@"
+   fi
+}
+
 # Determine resource URL version for cache-busting. Prefer the integration manifest
 # version if available, otherwise fall back to a timestamp.
 VERSION=""
@@ -29,15 +38,6 @@ fi
 if [ -z "$VERSION" ]; then
    VERSION="$(date +%Y.%m.%d.%H%M%S)"
 fi
-
-py() {
-   # Prefer python3 when present.
-   if command -v python3 >/dev/null 2>&1; then
-      python3 "$@"
-   else
-      python "$@"
-   fi
-}
 
 download_to() {
    url="$1"

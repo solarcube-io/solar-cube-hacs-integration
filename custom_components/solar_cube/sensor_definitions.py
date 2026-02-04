@@ -46,6 +46,7 @@ SENSOR_DEFINITIONS = [
         "unit": "V",
         "device_class": "voltage",
         "state_class": "measurement",
+        "division": 1000,
     },
     {
         "key": "grid_voltage_l2",
@@ -55,6 +56,7 @@ SENSOR_DEFINITIONS = [
         "unit": "V",
         "device_class": "voltage",
         "state_class": "measurement",
+        "division": 1000,
     },
     {
         "key": "grid_voltage_l3",
@@ -64,6 +66,7 @@ SENSOR_DEFINITIONS = [
         "unit": "V",
         "device_class": "voltage",
         "state_class": "measurement",
+        "division": 1000,
     },
     {
         "key": "grid_buy_active_energy",
@@ -173,7 +176,6 @@ SENSOR_DEFINITIONS = [
         "bucket": "agents",
         "range_start": "-1h",
     },
-
     # Scalar optimal action fields (also available inside the Optimal Actions payload).
     {
         "key": "optimal_actions_bc",

@@ -12,7 +12,10 @@ import yaml
 from pathlib import Path
 
 from homeassistant.components import persistent_notification
-from homeassistant.components.frontend import async_register_built_in_panel, async_remove_panel
+from homeassistant.components.frontend import (
+    async_register_built_in_panel,
+    async_remove_panel,
+)
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_NAME, CONF_TOKEN, CONF_URL
 from homeassistant.const import EVENT_HOMEASSISTANT_STARTED
@@ -62,7 +65,9 @@ async def _async_reload_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
     await hass.config_entries.async_reload(entry.entry_id)
 
 
-async def _async_run_frontend_installer(hass: HomeAssistant) -> tuple[int, str, str]:
+async def _async_run_frontend_installer(
+    hass: HomeAssistant,
+) -> tuple[int, str, str]:
     """Run the bundled installer hook script inside the HA environment."""
     script_path = Path(__file__).parent / "tools" / "install_frontend_deps.sh"
     if not script_path.exists():
@@ -95,7 +100,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         org=config[CONF_ORG],
     )
 
-    data_coordinator = SolarCubeDataCoordinator(hass, api, config, SENSOR_DEFINITIONS)
+    data_coordinator = SolarCubeDataCoordinator(
+        hass, api, config, SENSOR_DEFINITIONS
+    )
     forecast_coordinator = SolarCubeForecastCoordinator(hass, api, config)
     optimal_coordinator = SolarCubeOptimalActionsCoordinator(hass, api, config)
 
@@ -134,9 +141,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 LOGGER.warning("Frontend installer stderr:\n%s", stderr)
 
             if rc != 0:
+                deps = await _load_dashboard_dependencies(hass)
                 _notify_dependency_install(
                     hass,
-                    _load_dashboard_dependencies(),
+                    deps,
                     (
                         "The local frontend installer hook failed. "
                         "Check Home Assistant logs for 'Frontend installer' output."
@@ -159,11 +167,15 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         hass.async_create_task(_run_and_disable())
 
     if config.get(CONF_IMPORT_DASHBOARDS, DEFAULT_IMPORT_DASHBOARDS):
-        restart_needed |= await _async_ensure_storage_dashboards(hass, domain_data)
+        restart_needed |= await _async_ensure_storage_dashboards(
+            hass, domain_data
+        )
         restart_needed |= await _async_ensure_automations(hass, domain_data)
 
     # Optional: one-shot configure the built-in Energy dashboard.
-    if config.get(CONF_CONFIGURE_ENERGY_DASHBOARD, DEFAULT_CONFIGURE_ENERGY_DASHBOARD):
+    if config.get(
+        CONF_CONFIGURE_ENERGY_DASHBOARD, DEFAULT_CONFIGURE_ENERGY_DASHBOARD
+    ):
         restart_needed |= await _async_configure_energy_dashboard(hass)
 
         # Disable the one-shot flag to avoid re-writing on every restart.
@@ -183,7 +195,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     return True
 
 
-async def _async_ensure_automations(hass: HomeAssistant, domain_data: dict[str, Any]) -> bool:
+async def _async_ensure_automations(
+    hass: HomeAssistant, domain_data: dict[str, Any]
+) -> bool:
     """Ensure Solar Cube automations exist in /config/automations.yaml.
 
     Best-effort merge of shipped automations from custom_components/solar_cube/dashboards/automations.yaml.
@@ -223,8 +237,16 @@ async def _async_ensure_automations(hass: HomeAssistant, domain_data: dict[str, 
     def _read_merge_write() -> bool:
         existing = _load_yaml_list(config_path) if config_path.exists() else []
 
-        existing_ids = {str(a.get("id")).strip() for a in existing if isinstance(a.get("id"), str) and a.get("id").strip()}
-        existing_aliases = {str(a.get("alias")).strip().lower() for a in existing if isinstance(a.get("alias"), str) and a.get("alias").strip()}
+        existing_ids = {
+            str(a.get("id")).strip()
+            for a in existing
+            if isinstance(a.get("id"), str) and a.get("id").strip()
+        }
+        existing_aliases = {
+            str(a.get("alias")).strip().lower()
+            for a in existing
+            if isinstance(a.get("alias"), str) and a.get("alias").strip()
+        }
 
         changed = False
         for automation in shipped:
@@ -234,7 +256,11 @@ async def _async_ensure_automations(hass: HomeAssistant, domain_data: dict[str, 
             # Skip if already present.
             if automation_id and automation_id in existing_ids:
                 continue
-            if (not automation_id) and automation_alias and automation_alias.lower() in existing_aliases:
+            if (
+                (not automation_id)
+                and automation_alias
+                and automation_alias.lower() in existing_aliases
+            ):
                 continue
 
             existing.append(automation)
@@ -245,7 +271,8 @@ async def _async_ensure_automations(hass: HomeAssistant, domain_data: dict[str, 
 
         try:
             config_path.write_text(
-                yaml.safe_dump(existing, sort_keys=False, allow_unicode=True) + "\n",
+                yaml.safe_dump(existing, sort_keys=False, allow_unicode=True)
+                + "\n",
                 encoding="utf-8",
             )
         except OSError as err:
@@ -256,10 +283,15 @@ async def _async_ensure_automations(hass: HomeAssistant, domain_data: dict[str, 
 
     changed = await hass.async_add_executor_job(_read_merge_write)
     if changed:
-        LOGGER.warning("Installed Solar Cube automations into %s", Path(hass.config.config_dir) / "automations.yaml")
+        LOGGER.warning(
+            "Installed Solar Cube automations into %s",
+            Path(hass.config.config_dir) / "automations.yaml",
+        )
         # Best-effort apply without full restart.
         try:
-            await hass.services.async_call("automation", "reload", {}, blocking=False)
+            await hass.services.async_call(
+                "automation", "reload", {}, blocking=False
+            )
         except Exception:  # noqa: BLE001
             pass
 
@@ -285,10 +317,14 @@ async def _async_configure_energy_dashboard(hass: HomeAssistant) -> bool:
         try:
             template = json.loads(template_path.read_text(encoding="utf-8"))
         except OSError as err:
-            LOGGER.warning("Failed reading energy template %s: %s", template_path, err)
+            LOGGER.warning(
+                "Failed reading energy template %s: %s", template_path, err
+            )
             return None
         except json.JSONDecodeError as err:
-            LOGGER.warning("Invalid JSON in energy template %s: %s", template_path, err)
+            LOGGER.warning(
+                "Invalid JSON in energy template %s: %s", template_path, err
+            )
             return None
 
         data = template.get("data")
@@ -331,9 +367,13 @@ async def _async_configure_energy_dashboard(hass: HomeAssistant) -> bool:
             new_data["energy_sources"] = template_data["energy_sources"]
         # Ensure required top-level keys exist.
         if "device_consumption" not in new_data:
-            new_data["device_consumption"] = template_data.get("device_consumption", [])
+            new_data["device_consumption"] = template_data.get(
+                "device_consumption", []
+            )
         if "device_consumption_water" not in new_data:
-            new_data["device_consumption_water"] = template_data.get("device_consumption_water", [])
+            new_data["device_consumption_water"] = template_data.get(
+                "device_consumption_water", []
+            )
 
         if new_data == current_data and storage_path.exists():
             return False
@@ -349,7 +389,9 @@ async def _async_configure_energy_dashboard(hass: HomeAssistant) -> bool:
         out["data"] = new_data
 
         try:
-            backup_path = storage_path.with_name(f"energy.bak.{int(time.time())}")
+            backup_path = storage_path.with_name(
+                f"energy.bak.{int(time.time())}"
+            )
             if raw:
                 backup_path.write_text(raw, encoding="utf-8")
         except Exception:  # noqa: BLE001
@@ -358,7 +400,10 @@ async def _async_configure_energy_dashboard(hass: HomeAssistant) -> bool:
 
         tmp_path = storage_path.with_suffix(".tmp")
         try:
-            tmp_path.write_text(json.dumps(out, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+            tmp_path.write_text(
+                json.dumps(out, ensure_ascii=False, indent=2) + "\n",
+                encoding="utf-8",
+            )
             tmp_path.replace(storage_path)
         except OSError as err:
             LOGGER.warning("Failed writing %s: %s", storage_path, err)
@@ -373,12 +418,16 @@ async def _async_configure_energy_dashboard(hass: HomeAssistant) -> bool:
 
     changed = await hass.async_add_executor_job(_read_modify_write)
     if changed:
-        LOGGER.warning("Configured Home Assistant Energy dashboard (%s)", storage_path)
+        LOGGER.warning(
+            "Configured Home Assistant Energy dashboard (%s)", storage_path
+        )
     return changed
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
+    unload_ok = await hass.config_entries.async_unload_platforms(
+        entry, PLATFORMS
+    )
     if unload_ok and entry.entry_id in hass.data.get(DOMAIN, {}):
         domain_data = hass.data[DOMAIN]
         entry_data = domain_data.pop(entry.entry_id)
@@ -402,7 +451,9 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     return unload_ok
 
 
-async def _async_register_dashboards(hass: HomeAssistant, domain_data: dict[str, Any]) -> None:
+async def _async_register_dashboards(
+    hass: HomeAssistant, domain_data: dict[str, Any]
+) -> None:
     dashboard_dir = Path(__file__).parent.parent.parent / "dashboards"
 
     if not dashboard_dir.exists():
@@ -427,7 +478,9 @@ async def _async_register_dashboards(hass: HomeAssistant, domain_data: dict[str,
         registered.add(url_path)
 
 
-async def _async_ensure_storage_dashboards(hass: HomeAssistant, domain_data: dict[str, Any]) -> bool:
+async def _async_ensure_storage_dashboards(
+    hass: HomeAssistant, domain_data: dict[str, Any]
+) -> bool:
     """Ensure Solar Cube dashboards exist as Lovelace Storage dashboards.
 
     This creates dashboards that are editable in the UI afterward.
@@ -647,7 +700,9 @@ async def _async_ensure_storage_dashboards(hass: HomeAssistant, domain_data: dic
                 )
                 continue
         except Exception as err:  # noqa: BLE001
-            LOGGER.debug("Unexpected error loading dashboard %s: %s", url_path, err)
+            LOGGER.debug(
+                "Unexpected error loading dashboard %s: %s", url_path, err
+            )
             continue
 
         # Register panel and expose it to Lovelace so it can be edited via UI.
@@ -663,7 +718,11 @@ async def _async_ensure_storage_dashboards(hass: HomeAssistant, domain_data: dic
                 require_admin=False,
             )
         except Exception as err:  # noqa: BLE001
-            LOGGER.debug("Failed registering storage dashboard panel %s: %s", url_path, err)
+            LOGGER.debug(
+                "Failed registering storage dashboard panel %s: %s",
+                url_path,
+                err,
+            )
 
     return changed
 
@@ -731,25 +790,55 @@ def _notify_restart_required_fallback(hass: HomeAssistant) -> None:
     )
 
 
-def _load_dashboard_dependencies() -> list[dict[str, str]]:
+async def _load_dashboard_dependencies(
+    hass: HomeAssistant,
+) -> list[dict[str, str]]:
     defaults = [
-        {"name": "Energy Period Selector Plus", "repository": "flixlix/energy-period-selector-plus"},
-        {"name": "Energy Flow Card Plus", "repository": "flixlix/energy-flow-card-plus"},
-        {"name": "Energy Entity Row", "repository": "zeronounours/lovelace-energy-entity-row"},
-        {"name": "Power Flow Card Plus", "repository": "flixlix/power-flow-card-plus"},
-        {"name": "Horizon Card", "repository": "rejuvenate/lovelace-horizon-card"},
+        {
+            "name": "Energy Period Selector Plus",
+            "repository": "flixlix/energy-period-selector-plus",
+        },
+        {
+            "name": "Energy Flow Card Plus",
+            "repository": "flixlix/energy-flow-card-plus",
+        },
+        {
+            "name": "Energy Entity Row",
+            "repository": "zeronounours/lovelace-energy-entity-row",
+        },
+        {
+            "name": "Power Flow Card Plus",
+            "repository": "flixlix/power-flow-card-plus",
+        },
+        {
+            "name": "Horizon Card",
+            "repository": "rejuvenate/lovelace-horizon-card",
+        },
         {"name": "ApexCharts Card", "repository": "RomRider/apexcharts-card"},
-        {"name": "Weather Chart Card", "repository": "mlamberts78/weather-chart-card"},
-        {"name": "History Explorer Card", "repository": "alexarch21/history-explorer-card"},
+        {
+            "name": "Weather Chart Card",
+            "repository": "mlamberts78/weather-chart-card",
+        },
+        {
+            "name": "History Explorer Card",
+            "repository": "alexarch21/history-explorer-card",
+        },
         {"name": "Meteoalarm Card", "repository": "MrBartusek/MeteoalarmCard"},
-        {"name": "Atomic Calendar Revive", "repository": "totaldebug/atomic-calendar-revive"},
+        {
+            "name": "Atomic Calendar Revive",
+            "repository": "totaldebug/atomic-calendar-revive",
+        },
     ]
 
     if not DASHBOARD_DEPENDENCIES_PATH.exists():
         return defaults
 
     try:
-        data = json.loads(DASHBOARD_DEPENDENCIES_PATH.read_text())
+        data = await hass.async_add_executor_job(
+            lambda: json.loads(
+                DASHBOARD_DEPENDENCIES_PATH.read_text(encoding="utf-8")
+            )
+        )
     except (OSError, json.JSONDecodeError) as err:
         LOGGER.warning(
             "Failed to read dashboard dependencies from %s: %s",
@@ -810,6 +899,8 @@ def _notify_dependency_install(
     )
 
 
-async def _async_remove_dashboards(hass: HomeAssistant, dashboards: set[str]) -> None:
+async def _async_remove_dashboards(
+    hass: HomeAssistant, dashboards: set[str]
+) -> None:
     for url_path in dashboards:
         await async_remove_panel(hass, url_path)

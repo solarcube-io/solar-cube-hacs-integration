@@ -1,13 +1,17 @@
 """Coordinators for Solar Cube."""
 from __future__ import annotations
 
+import asyncio
 import logging
-from datetime import datetime
 from typing import Any
 
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryAuthFailed
-from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
+from homeassistant.helpers.update_coordinator import (
+    DataUpdateCoordinator,
+    UpdateFailed,
+)
+from homeassistant.util import dt as dt_util
 
 from .api import SolarCubeApi, SolarCubeApiAuthError, SolarCubeApiRequestError
 from .const import (
@@ -25,7 +29,13 @@ _LOGGER = logging.getLogger(__name__)
 class SolarCubeDataCoordinator(DataUpdateCoordinator[dict[str, Any]]):
     """Coordinator for simple scalar values."""
 
-    def __init__(self, hass: HomeAssistant, api: SolarCubeApi, entry_data: dict[str, Any], sensor_definitions: list[dict[str, Any]]) -> None:
+    def __init__(
+        self,
+        hass: HomeAssistant,
+        api: SolarCubeApi,
+        entry_data: dict[str, Any],
+        sensor_definitions: list[dict[str, Any]],
+    ) -> None:
         self.api = api
         self.entry_data = entry_data
         self.sensor_definitions = sensor_definitions
@@ -38,9 +48,11 @@ class SolarCubeDataCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
     async def _async_update_data(self) -> dict[str, Any]:
         try:
-            values: dict[str, Any] = {}
             data_bucket = self.entry_data.get(CONF_DATA_BUCKET)
-            for definition in self.sensor_definitions:
+
+            async def _fetch_value(
+                definition: dict[str, Any]
+            ) -> tuple[str, Any]:
                 bucket = definition.get("bucket", data_bucket)
                 value = await self.api.async_query_last(
                     bucket=bucket,
@@ -48,8 +60,14 @@ class SolarCubeDataCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                     field=definition["field"],
                     range_start=definition.get("range_start", "-5m"),
                 )
-                values[definition["key"]] = value
-            values["_last_update"] = datetime.utcnow().isoformat()
+                return definition["key"], value
+
+            results = await asyncio.gather(
+                *(_fetch_value(d) for d in self.sensor_definitions)
+            )
+            values = dict(results)
+
+            values["_last_update"] = dt_util.utcnow().isoformat()
             return values
         except SolarCubeApiAuthError as err:
             raise ConfigEntryAuthFailed("InfluxDB unauthorized") from err
@@ -57,10 +75,17 @@ class SolarCubeDataCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             raise UpdateFailed(str(err)) from err
 
 
-class SolarCubeForecastCoordinator(DataUpdateCoordinator[list[dict[str, Any]]]):
+class SolarCubeForecastCoordinator(
+    DataUpdateCoordinator[list[dict[str, Any]]]
+):
     """Coordinator for forecast data."""
 
-    def __init__(self, hass: HomeAssistant, api: SolarCubeApi, entry_data: dict[str, Any]) -> None:
+    def __init__(
+        self,
+        hass: HomeAssistant,
+        api: SolarCubeApi,
+        entry_data: dict[str, Any],
+    ) -> None:
         self.api = api
         self.entry_data = entry_data
         super().__init__(
@@ -82,10 +107,17 @@ class SolarCubeForecastCoordinator(DataUpdateCoordinator[list[dict[str, Any]]]):
             raise UpdateFailed(str(err)) from err
 
 
-class SolarCubeOptimalActionsCoordinator(DataUpdateCoordinator[list[dict[str, Any]]]):
+class SolarCubeOptimalActionsCoordinator(
+    DataUpdateCoordinator[list[dict[str, Any]]]
+):
     """Coordinator for optimal actions data."""
 
-    def __init__(self, hass: HomeAssistant, api: SolarCubeApi, entry_data: dict[str, Any]) -> None:
+    def __init__(
+        self,
+        hass: HomeAssistant,
+        api: SolarCubeApi,
+        entry_data: dict[str, Any],
+    ) -> None:
         self.api = api
         self.entry_data = entry_data
         super().__init__(

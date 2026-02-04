@@ -9,7 +9,8 @@ from typing import Any, Dict, List
 
 import influxdb_client
 from influxdb_client.rest import ApiException
-import pytz
+
+from homeassistant.util import dt as dt_util
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -20,6 +21,7 @@ class SolarCubeApiAuthError(Exception):
 
 class SolarCubeApiRequestError(Exception):
     """Raised when an InfluxDB request fails for non-auth reasons."""
+
 
 FORECAST_QUERY = """from(bucket: {bucket_literal})
   |> range(start: now(), stop: 32h)
@@ -36,7 +38,9 @@ class SolarCubeApi:
     """Lightweight wrapper around influxdb-client."""
 
     def __init__(self, url: str, token: str, org: str) -> None:
-        self._client = influxdb_client.InfluxDBClient(url=url, token=self._normalize_token(token), org=org)
+        self._client = influxdb_client.InfluxDBClient(
+            url=url, token=self._normalize_token(token), org=org
+        )
         self._query_api = self._client.query_api()
 
     @staticmethod
@@ -105,15 +109,21 @@ class SolarCubeApi:
             body = body[:800] + "…"
         return f"status={status} reason={reason} body={body!r}"
 
-    async def async_query_last(self, bucket: str, measurement: str, field: str, range_start: str = "-5m") -> float | str | None:
+    async def async_query_last(
+        self,
+        bucket: str,
+        measurement: str,
+        field: str,
+        range_start: str = "-5m",
+    ) -> float | str | None:
         bucket_literal = self._bucket_literal(bucket)
         measurement_literal = self._flux_str_literal(measurement)
         field_literal = self._flux_str_literal(field)
         flux = (
             f"from(bucket: {bucket_literal}) "
             f"|> range(start: {range_start}) "
-            f"|> filter(fn: (r) => r[\"_measurement\"] == {measurement_literal}) "
-            f"|> filter(fn: (r) => r[\"_field\"] == {field_literal}) "
+            f'|> filter(fn: (r) => r["_measurement"] == {measurement_literal}) '
+            f'|> filter(fn: (r) => r["_field"] == {field_literal}) '
             "|> last()"
         )
         try:
@@ -138,9 +148,13 @@ class SolarCubeApi:
                 return record.get_value()
         return None
 
-    async def async_get_forecast(self, bucket: str, hass_timezone: str) -> list[dict[str, Any]]:
+    async def async_get_forecast(
+        self, bucket: str, hass_timezone: str
+    ) -> list[dict[str, Any]]:
         try:
-            flux = FORECAST_QUERY.format(bucket_literal=self._bucket_literal(bucket))
+            flux = FORECAST_QUERY.format(
+                bucket_literal=self._bucket_literal(bucket)
+            )
             _LOGGER.debug(
                 "Influx forecast flux=%s (bucket_raw=%r)",
                 flux,
@@ -154,10 +168,12 @@ class SolarCubeApi:
                 _LOGGER.error(
                     "InfluxDB rejected Flux (forecast). details=%s flux=%s",
                     self._api_exception_details(err),
-                    FORECAST_QUERY.format(bucket_literal=self._bucket_literal(bucket)),
+                    FORECAST_QUERY.format(
+                        bucket_literal=self._bucket_literal(bucket)
+                    ),
                 )
             raise SolarCubeApiRequestError(str(err)) from err
-        tz = await asyncio.to_thread(pytz.timezone, hass_timezone)
+        tz = dt_util.get_time_zone(hass_timezone)
         forecast_data: Dict[str, Dict[str, Any]] = {}
 
         for table in result:
@@ -196,11 +212,18 @@ class SolarCubeApi:
                 elif field == "cs/prices/sell_price_per_kwh":
                     forecast_data[hour_key]["sp"] = value
 
-        return [{"dt": hour_key, **data} for hour_key, data in sorted(forecast_data.items())]
+        return [
+            {"dt": hour_key, **data}
+            for hour_key, data in sorted(forecast_data.items())
+        ]
 
-    async def async_get_optimal_actions(self, bucket: str, hass_timezone: str) -> List[dict[str, Any]]:
+    async def async_get_optimal_actions(
+        self, bucket: str, hass_timezone: str
+    ) -> List[dict[str, Any]]:
         try:
-            flux = OPTIMAL_ACTIONS_QUERY.format(bucket_literal=self._bucket_literal(bucket))
+            flux = OPTIMAL_ACTIONS_QUERY.format(
+                bucket_literal=self._bucket_literal(bucket)
+            )
             _LOGGER.debug(
                 "Influx optimal_actions flux=%s (bucket_raw=%r)",
                 flux,
@@ -214,10 +237,12 @@ class SolarCubeApi:
                 _LOGGER.error(
                     "InfluxDB rejected Flux (optimal_actions). details=%s flux=%s",
                     self._api_exception_details(err),
-                    OPTIMAL_ACTIONS_QUERY.format(bucket_literal=self._bucket_literal(bucket)),
+                    OPTIMAL_ACTIONS_QUERY.format(
+                        bucket_literal=self._bucket_literal(bucket)
+                    ),
                 )
             raise SolarCubeApiRequestError(str(err)) from err
-        tz = await asyncio.to_thread(pytz.timezone, hass_timezone)
+        tz = dt_util.get_time_zone(hass_timezone)
         actions: Dict[str, Dict[str, Any]] = {}
 
         for table in result:
@@ -228,7 +253,15 @@ class SolarCubeApi:
                 local_time = record_time.astimezone(tz)
                 hour_key = local_time.isoformat()
                 if hour_key not in actions:
-                    actions[hour_key] = {"bc": None, "bg": None, "gb": None, "gc": None, "pb": None, "pc": None, "pg": None}
+                    actions[hour_key] = {
+                        "bc": None,
+                        "bg": None,
+                        "gb": None,
+                        "gc": None,
+                        "pb": None,
+                        "pc": None,
+                        "pg": None,
+                    }
                 value = record.get_value()
                 if isinstance(value, (float, int)):
                     value = round(value, 3)
@@ -236,4 +269,7 @@ class SolarCubeApi:
                 short_key = field.split("/")[-1]
                 actions[hour_key][short_key] = value
 
-        return [{"dt": hour_key, **data} for hour_key, data in sorted(actions.items())]
+        return [
+            {"dt": hour_key, **data}
+            for hour_key, data in sorted(actions.items())
+        ]

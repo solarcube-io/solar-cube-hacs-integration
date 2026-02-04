@@ -14,8 +14,7 @@
   "iot_class": "cloud_polling",
   "issue_tracker": "https://github.com/solarcube-io/solar-cube-hacs-integration/issues",
   "requirements": [
-    "influxdb-client==1.43.0",
-    "pytz"
+    "influxdb-client==1.43.0"
   ],
-  "version": "0.1.3"
+  "version": "0.1.4"
 }

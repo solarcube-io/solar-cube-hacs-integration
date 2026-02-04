@@ -31,6 +31,7 @@ from .const import (
     DOMAIN,
 )
 
+
 @config_entries.HANDLERS.register(DOMAIN)
 class SolarCubeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Handle a config flow for Solar Cube."""
@@ -63,7 +64,9 @@ class SolarCubeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         return await self.hass.async_add_executor_job(_read)
 
-    async def async_step_user(self, user_input: dict[str, Any] | None = None) -> FlowResult:
+    async def async_step_user(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
         errors: dict[str, str] = {}
 
         if user_input is not None:
@@ -80,7 +83,10 @@ class SolarCubeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                         token=token,
                         org=user_input[CONF_ORG],
                     )
-                    await api.async_validate(bucket=user_input.get(CONF_DATA_BUCKET) or DEFAULT_DATA_BUCKET)
+                    await api.async_validate(
+                        bucket=user_input.get(CONF_DATA_BUCKET)
+                        or DEFAULT_DATA_BUCKET
+                    )
                 except SolarCubeApiAuthError:
                     errors["base"] = "invalid_auth"
                 except SolarCubeApiRequestError:
@@ -109,8 +115,12 @@ class SolarCubeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 vol.Required(CONF_URL, default=DEFAULT_URL): str,
                 vol.Optional(CONF_TOKEN, default=""): str,
                 vol.Required(CONF_ORG, default=DEFAULT_ORG): str,
-                vol.Optional(CONF_DATA_BUCKET, default=DEFAULT_DATA_BUCKET): str,
-                vol.Optional(CONF_AGENTS_BUCKET, default=DEFAULT_AGENTS_BUCKET): str,
+                vol.Optional(
+                    CONF_DATA_BUCKET, default=DEFAULT_DATA_BUCKET
+                ): str,
+                vol.Optional(
+                    CONF_AGENTS_BUCKET, default=DEFAULT_AGENTS_BUCKET
+                ): str,
                 vol.Optional(
                     CONF_IMPORT_DASHBOARDS, default=DEFAULT_IMPORT_DASHBOARDS
                 ): bool,
@@ -125,15 +135,25 @@ class SolarCubeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             }
         )
 
-        return self.async_show_form(step_id="user", data_schema=schema, errors=errors)
+        return self.async_show_form(
+            step_id="user", data_schema=schema, errors=errors
+        )
 
-    async def async_step_reauth(self, user_input: dict[str, Any]) -> FlowResult:
+    async def async_step_reauth(
+        self, user_input: dict[str, Any]
+    ) -> FlowResult:
         """Handle a re-authentication flow initiated by Home Assistant."""
         entry_id = self.context.get("entry_id")
-        self._reauth_entry = self.hass.config_entries.async_get_entry(entry_id) if entry_id else None
+        self._reauth_entry = (
+            self.hass.config_entries.async_get_entry(entry_id)
+            if entry_id
+            else None
+        )
         return await self.async_step_reauth_confirm()
 
-    async def async_step_reauth_confirm(self, user_input: dict[str, Any] | None = None) -> FlowResult:
+    async def async_step_reauth_confirm(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
         """Confirm and perform re-authentication."""
         errors: dict[str, str] = {}
         entry = self._reauth_entry
@@ -147,7 +167,10 @@ class SolarCubeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     token=user_input[CONF_TOKEN],
                     org=entry.options.get(CONF_ORG, entry.data[CONF_ORG]),
                 )
-                data_bucket = entry.options.get(CONF_DATA_BUCKET, entry.data.get(CONF_DATA_BUCKET, DEFAULT_DATA_BUCKET))
+                data_bucket = entry.options.get(
+                    CONF_DATA_BUCKET,
+                    entry.data.get(CONF_DATA_BUCKET, DEFAULT_DATA_BUCKET),
+                )
                 await api.async_validate(bucket=data_bucket)
             except SolarCubeApiAuthError:
                 errors["base"] = "invalid_auth"
@@ -163,18 +186,27 @@ class SolarCubeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
             if not errors:
                 # Store token in options because entry.options override entry.data in async_setup_entry.
-                new_options = {**entry.options, CONF_TOKEN: user_input[CONF_TOKEN]}
+                new_options = {
+                    **entry.options,
+                    CONF_TOKEN: user_input[CONF_TOKEN],
+                }
                 new_data = {**entry.data, CONF_TOKEN: user_input[CONF_TOKEN]}
-                self.hass.config_entries.async_update_entry(entry, data=new_data, options=new_options)
+                self.hass.config_entries.async_update_entry(
+                    entry, data=new_data, options=new_options
+                )
                 await self.hass.config_entries.async_reload(entry.entry_id)
                 return self.async_abort(reason="reauth_successful")
 
         schema = vol.Schema({vol.Required(CONF_TOKEN): str})
-        return self.async_show_form(step_id="reauth_confirm", data_schema=schema, errors=errors)
+        return self.async_show_form(
+            step_id="reauth_confirm", data_schema=schema, errors=errors
+        )
 
     @staticmethod
     @callback
-    def async_get_options_flow(config_entry: ConfigEntry) -> config_entries.OptionsFlow:
+    def async_get_options_flow(
+        config_entry: ConfigEntry,
+    ) -> config_entries.OptionsFlow:
         return SolarCubeOptionsFlowHandler(config_entry)
 
 
@@ -184,7 +216,9 @@ class SolarCubeOptionsFlowHandler(config_entries.OptionsFlow):
     def __init__(self, config_entry: ConfigEntry) -> None:
         self._entry = config_entry
 
-    async def async_step_init(self, user_input: dict[str, Any] | None = None) -> FlowResult:
+    async def async_step_init(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
         errors: dict[str, str] = {}
 
         current = {**self._entry.data, **self._entry.options}
@@ -224,39 +258,68 @@ class SolarCubeOptionsFlowHandler(config_entries.OptionsFlow):
                     CONF_IMPORT_DASHBOARDS: user_input[CONF_IMPORT_DASHBOARDS],
                     CONF_CONFIGURE_ENERGY_DASHBOARD: user_input.get(
                         CONF_CONFIGURE_ENERGY_DASHBOARD,
-                        current.get(CONF_CONFIGURE_ENERGY_DASHBOARD, DEFAULT_CONFIGURE_ENERGY_DASHBOARD),
+                        current.get(
+                            CONF_CONFIGURE_ENERGY_DASHBOARD,
+                            DEFAULT_CONFIGURE_ENERGY_DASHBOARD,
+                        ),
                     ),
                 }
                 # Store installer hook flag in options so it can be toggled later.
-                new_options[CONF_RUN_FRONTEND_INSTALLER] = user_input.get(CONF_RUN_FRONTEND_INSTALLER, True)
+                new_options[CONF_RUN_FRONTEND_INSTALLER] = user_input.get(
+                    CONF_RUN_FRONTEND_INSTALLER, True
+                )
                 if token:
                     new_options[CONF_TOKEN] = token
 
                 new_title = user_input.get(CONF_NAME) or self._entry.title
                 # Update the entry title; options are returned via async_create_entry.
                 if new_title != self._entry.title:
-                    self.hass.config_entries.async_update_entry(self._entry, title=new_title)
+                    self.hass.config_entries.async_update_entry(
+                        self._entry, title=new_title
+                    )
 
                 return self.async_create_entry(title="", data=new_options)
 
         schema = vol.Schema(
             {
                 vol.Optional(CONF_NAME, default=self._entry.title): str,
-                vol.Required(CONF_URL, default=current.get(CONF_URL, DEFAULT_URL)): str,
+                vol.Required(
+                    CONF_URL, default=current.get(CONF_URL, DEFAULT_URL)
+                ): str,
                 vol.Optional(CONF_TOKEN, default=""): str,
-                vol.Required(CONF_ORG, default=current.get(CONF_ORG, DEFAULT_ORG)): str,
-                vol.Required(CONF_DATA_BUCKET, default=current.get(CONF_DATA_BUCKET, DEFAULT_DATA_BUCKET)): str,
-                vol.Required(CONF_AGENTS_BUCKET, default=current.get(CONF_AGENTS_BUCKET, DEFAULT_AGENTS_BUCKET)): str,
-                vol.Required(CONF_IMPORT_DASHBOARDS, default=current.get(CONF_IMPORT_DASHBOARDS, DEFAULT_IMPORT_DASHBOARDS)): bool,
+                vol.Required(
+                    CONF_ORG, default=current.get(CONF_ORG, DEFAULT_ORG)
+                ): str,
+                vol.Required(
+                    CONF_DATA_BUCKET,
+                    default=current.get(CONF_DATA_BUCKET, DEFAULT_DATA_BUCKET),
+                ): str,
+                vol.Required(
+                    CONF_AGENTS_BUCKET,
+                    default=current.get(
+                        CONF_AGENTS_BUCKET, DEFAULT_AGENTS_BUCKET
+                    ),
+                ): str,
+                vol.Required(
+                    CONF_IMPORT_DASHBOARDS,
+                    default=current.get(
+                        CONF_IMPORT_DASHBOARDS, DEFAULT_IMPORT_DASHBOARDS
+                    ),
+                ): bool,
                 vol.Optional(
                     CONF_RUN_FRONTEND_INSTALLER,
                     default=current.get(CONF_RUN_FRONTEND_INSTALLER, True),
                 ): bool,
                 vol.Required(
                     CONF_CONFIGURE_ENERGY_DASHBOARD,
-                    default=current.get(CONF_CONFIGURE_ENERGY_DASHBOARD, DEFAULT_CONFIGURE_ENERGY_DASHBOARD),
+                    default=current.get(
+                        CONF_CONFIGURE_ENERGY_DASHBOARD,
+                        DEFAULT_CONFIGURE_ENERGY_DASHBOARD,
+                    ),
                 ): bool,
             }
         )
 
-        return self.async_show_form(step_id="init", data_schema=schema, errors=errors)
+        return self.async_show_form(
+            step_id="init", data_schema=schema, errors=errors
+        )

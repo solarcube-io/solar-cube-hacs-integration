@@ -36,7 +36,7 @@ Install via HACS (recommended — now included in the official HACS store):
 7. Dashboard custom cards: the integration can optionally run a local installer hook to register/repair the required Lovelace resources. Leave **Run local frontend installer hook (advanced)** enabled during setup (default), or manage the resources yourself.
 
 
-**BIG WARNING — Automatic Frontend Resources**
+**WARNING — Automatic Frontend Resources**
 
 - **What happens:** If you enable the local frontend installer hook the integration will automatically download a set of third-party Lovelace resources (JavaScript modules) and place them under `/config/www/solar_cube` on your Home Assistant configuration directory. The installer will also attempt to auto-add these resources to Home Assistant's Lovelace resource storage using URLs under `/local/solar_cube/`.
 - **Why this matters:** These are external projects maintained by third parties. You should review the list below and confirm you are happy with the specified versions before enabling the installer.
