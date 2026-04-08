@@ -30,9 +30,10 @@ from .const import (
     CONF_CONFIGURE_ENERGY_DASHBOARD,
     CONF_DATA_BUCKET,
     CONF_IMPORT_DASHBOARDS,
+    CONF_LANGUAGE,
     CONF_ORG,
     CONF_RUN_FRONTEND_INSTALLER,
-    DASHBOARD_FILES,
+    get_dashboard_files,
     DASHBOARD_DEPENDENCIES_PATH,
     DEFAULT_CONFIGURE_ENERGY_DASHBOARD,
     DEFAULT_IMPORT_DASHBOARDS,
@@ -452,7 +453,7 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
 
 async def _async_register_dashboards(
-    hass: HomeAssistant, domain_data: dict[str, Any]
+    hass: HomeAssistant, domain_data: dict[str, Any], lang: str = "en"
 ) -> None:
     dashboard_dir = Path(__file__).parent.parent.parent / "dashboards"
 
@@ -461,7 +462,7 @@ async def _async_register_dashboards(
 
     registered = domain_data.setdefault("dashboards_registered", set())
 
-    for url_path, filename in DASHBOARD_FILES.items():
+    for url_path, filename in get_dashboard_files(lang).items():
         dashboard_path = dashboard_dir / filename
         if not dashboard_path.exists() or url_path in registered:
             continue
