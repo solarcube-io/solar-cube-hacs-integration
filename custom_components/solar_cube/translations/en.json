@@ -12,6 +12,7 @@
           "data_bucket": "Data bucket (live measurements)",
           "agents_bucket": "Agents bucket (forecasts/actions)",
           "import_dashboards": "Import dashboards",
+          "language": "Dashboard language",
           "run_frontend_installer": "Run the installer to download the required dependencies.",
           "configure_energy_dashboard": "Configure Home Assistant Energy dashboard"
         }
@@ -49,6 +50,7 @@
           "data_bucket": "Data bucket (live measurements)",
           "agents_bucket": "Agents bucket (forecasts/actions)",
           "import_dashboards": "Import dashboards",
+          "language": "Dashboard language",
           "run_frontend_installer": "Run the installer to download the required dependencies.",
           "configure_energy_dashboard": "Configure Home Assistant Energy dashboard"
         }
@@ -59,8 +61,7 @@
       "invalid_auth": "Authentication failed. Check the token and organization.",
       "unknown": "Unexpected error. See logs for details."
     }
-  }
-  ,
+  },
   "issues": {
     "restart_required": {
       "title": "Restart required",

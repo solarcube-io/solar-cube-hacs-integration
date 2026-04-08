@@ -126,7 +126,8 @@ class SolarCubeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     CONF_IMPORT_DASHBOARDS, default=DEFAULT_IMPORT_DASHBOARDS
                 ): bool,
                 vol.Optional(
-                    CONF_LANGUAGE, default=self.hass.config.language.split("-")[0] if self.hass.config.language else "en"
+                    CONF_LANGUAGE,
+                    default=(getattr(self.hass.config, "language", None) or "en").split("-")[0],
                 ): vol.In({"pl": "Polski", "en": "English"}),
                 vol.Optional(
                     CONF_RUN_FRONTEND_INSTALLER,
@@ -267,6 +268,10 @@ class SolarCubeOptionsFlowHandler(config_entries.OptionsFlow):
                             DEFAULT_CONFIGURE_ENERGY_DASHBOARD,
                         ),
                     ),
+                    CONF_LANGUAGE: user_input.get(
+                        CONF_LANGUAGE,
+                        current.get(CONF_LANGUAGE, "en"),
+                    ),
                 }
                 # Store installer hook flag in options so it can be toggled later.
                 new_options[CONF_RUN_FRONTEND_INSTALLER] = user_input.get(
@@ -310,6 +315,13 @@ class SolarCubeOptionsFlowHandler(config_entries.OptionsFlow):
                         CONF_IMPORT_DASHBOARDS, DEFAULT_IMPORT_DASHBOARDS
                     ),
                 ): bool,
+                vol.Optional(
+                    CONF_LANGUAGE,
+                    default=current.get(
+                        CONF_LANGUAGE,
+                        (getattr(self.hass.config, "language", None) or "en").split("-")[0],
+                    ),
+                ): vol.In({"pl": "Polski", "en": "English"}),
                 vol.Optional(
                     CONF_RUN_FRONTEND_INSTALLER,
                     default=current.get(CONF_RUN_FRONTEND_INSTALLER, True),
