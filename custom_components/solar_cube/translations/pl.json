@@ -12,6 +12,7 @@
           "data_bucket": "Bucket danych (pomiary bieżące)",
           "agents_bucket": "Bucket agents (prognozy/akcje)",
           "import_dashboards": "Importuj dashboardy",
+          "language": "Język dashboardów",
           "run_frontend_installer": "Uruchom instalator, aby pobrać wymagane zależności.",
           "configure_energy_dashboard": "Skonfiguruj pulpit Energii (Home Assistant)"
         }
@@ -49,6 +50,7 @@
           "data_bucket": "Bucket danych (pomiary bieżące)",
           "agents_bucket": "Bucket agents (prognozy/akcje)",
           "import_dashboards": "Importuj dashboardy",
+          "language": "Język dashboardów",
           "run_frontend_installer": "Uruchom instalator, aby pobrać wymagane zależności.",
           "configure_energy_dashboard": "Skonfiguruj pulpit Energii (Home Assistant)"
         }
@@ -59,8 +61,7 @@
       "invalid_auth": "Błąd autoryzacji. Sprawdź token i organizację.",
       "unknown": "Nieoczekiwany błąd. Sprawdź logi, aby uzyskać szczegóły."
     }
-  }
-  ,
+  },
   "issues": {
     "restart_required": {
       "title": "Wymagany restart",

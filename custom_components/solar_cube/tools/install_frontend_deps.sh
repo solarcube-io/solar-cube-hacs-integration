@@ -363,7 +363,7 @@ add_resource "$url"
 url="$(install_release "rejuvenate/lovelace-horizon-card" "v1.4.0" "lovelace-horizon-card" '(lovelace-horizon-card|horizon).*\\.js(\\.gz)?$')" || { failures=$((failures+1)); url=""; }
 add_resource "$url"
 
-url="$(install_release "totaldebug/atomic-calendar-revive" "v10.0.0" "atomic-calendar-revive" 'atomic-calendar-revive.*\\.js(\\.gz)?$')" || { failures=$((failures+1)); url=""; }
+url="$(install_release "totaldebug/atomic-calendar-revive" "v10.2.0" "atomic-calendar-revive" 'atomic-calendar-revive.*\\.js(\\.gz)?$')" || { failures=$((failures+1)); url=""; }
 add_resource "$url"
 
 url="$(install_release "mlamberts78/weather-chart-card" "V2.4.11" "weather-chart-card" 'weather-chart-card.*\\.js(\\.gz)?$')" || { failures=$((failures+1)); url=""; }

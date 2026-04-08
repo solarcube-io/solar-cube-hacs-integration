@@ -17,11 +17,15 @@ CONF_RUN_FRONTEND_INSTALLER = "run_frontend_installer"
 CONF_CONFIGURE_ENERGY_DASHBOARD = "configure_energy_dashboard"
 CONF_LANGUAGE = "language"
 
-DASHBOARD_FILES = {
-    "solar-cube-panel": "panel_solar_cube_pl.yaml",
-    "solar-cube-history": "history_solar_cube_pl.yaml",
-    "solar-cube-forecasts": "forecasts_solar_cube_pl.yaml",
-}
+
+def get_dashboard_files(lang: str = "en") -> dict[str, str]:
+    """Return dashboard filename mapping for the given language."""
+    suffix = "pl" if lang == "pl" else "en"
+    return {
+        "solar-cube-panel": f"panel_solar_cube_{suffix}.yaml",
+        "solar-cube-history": f"history_solar_cube_{suffix}.yaml",
+        "solar-cube-forecasts": f"forecasts_solar_cube_{suffix}.yaml",
+    }
 
 # Dashboards and dependencies are bundled with the integration so they are available
 # even when installed via HACS (which typically installs only custom_components/*).
