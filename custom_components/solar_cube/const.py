@@ -15,6 +15,7 @@ CONF_ORG = "org"
 CONF_IMPORT_DASHBOARDS = "import_dashboards"
 CONF_RUN_FRONTEND_INSTALLER = "run_frontend_installer"
 CONF_CONFIGURE_ENERGY_DASHBOARD = "configure_energy_dashboard"
+CONF_LANGUAGE = "language"
 
 DASHBOARD_FILES = {
     "solar-cube-panel": "panel_solar_cube_pl.yaml",

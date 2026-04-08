@@ -168,7 +168,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     if config.get(CONF_IMPORT_DASHBOARDS, DEFAULT_IMPORT_DASHBOARDS):
         restart_needed |= await _async_ensure_storage_dashboards(
-            hass, domain_data
+            hass, domain_data, config
         )
         restart_needed |= await _async_ensure_automations(hass, domain_data)
 
@@ -479,7 +479,7 @@ async def _async_register_dashboards(
 
 
 async def _async_ensure_storage_dashboards(
-    hass: HomeAssistant, domain_data: dict[str, Any]
+    hass: HomeAssistant, domain_data: dict[str, Any], config: dict[str, Any]
 ) -> bool:
     """Ensure Solar Cube dashboards exist as Lovelace Storage dashboards.
 
@@ -513,7 +513,7 @@ async def _async_ensure_storage_dashboards(
 
             async def _retry(_: Any) -> None:
                 domain_data.pop("lovelace_retry_scheduled", None)
-                await _async_ensure_storage_dashboards(hass, domain_data)
+                await _async_ensure_storage_dashboards(hass, domain_data, config)
 
             hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STARTED, _retry)
         return False
@@ -543,6 +543,11 @@ async def _async_ensure_storage_dashboards(
     packaged_dashboards_dir = Path(__file__).parent / "dashboards"
 
     def _language_prefix() -> str:
+        # Prefer user selection if available, otherwise fallback to HA global language
+        lang_selection = config.get(CONF_LANGUAGE)
+        if lang_selection:
+            return lang_selection.split("-")[0].lower()
+        
         lang = (getattr(hass.config, "language", None) or "").lower()
         return (lang.split("-")[0] or "en").strip() or "en"
 

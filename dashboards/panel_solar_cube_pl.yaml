@@ -50,12 +50,12 @@ views:
             entities:
               - type: custom:energy-entity-row
                 entity: sensor.grid_sell_active_energy_total_compensation
-                name: Wartość sprzedanej energii
+                name: Wartość wyeksportowanej energii
               - type: custom:energy-entity-row
                 entity: sensor.grid_buy_active_energy_total_cost
-                name: Koszty zakupu energii
+                name: Koszt pobranej energii
             state_color: false
-            title: Wartość wysłanej i pobranej energii
+            title: Wartość wyeksportowanej i pobranej energii
             show_header_toggle: true
           - show_name: true
             show_icon: true

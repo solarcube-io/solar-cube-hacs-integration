@@ -19,6 +19,7 @@ from .const import (
     CONF_CONFIGURE_ENERGY_DASHBOARD,
     CONF_DATA_BUCKET,
     CONF_IMPORT_DASHBOARDS,
+    CONF_LANGUAGE,
     CONF_ORG,
     CONF_RUN_FRONTEND_INSTALLER,
     DEFAULT_AGENTS_BUCKET,
@@ -124,6 +125,9 @@ class SolarCubeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 vol.Optional(
                     CONF_IMPORT_DASHBOARDS, default=DEFAULT_IMPORT_DASHBOARDS
                 ): bool,
+                vol.Optional(
+                    CONF_LANGUAGE, default=self.hass.config.language.split("-")[0] if self.hass.config.language else "en"
+                ): vol.In({"pl": "Polski", "en": "English"}),
                 vol.Optional(
                     CONF_RUN_FRONTEND_INSTALLER,
                     default=True,

@@ -50,10 +50,10 @@ views:
             entities:
               - type: custom:energy-entity-row
                 entity: sensor.grid_sell_active_energy_total_compensation
-                name: Energy sold value
+                name: Energy export value
               - type: custom:energy-entity-row
                 entity: sensor.grid_buy_active_energy_total_cost
-                name: Energy purchase cost
+                name: Energy import cost
             state_color: false
             title: Exported & imported energy value
             show_header_toggle: true
