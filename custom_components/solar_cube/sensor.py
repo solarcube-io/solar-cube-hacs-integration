@@ -125,30 +125,6 @@ async def async_setup_entry(
     sensors.append(SolarCubeForecastSensor(forecast_coordinator, entry))
     sensors.append(SolarCubeOptimalActionsSensor(optimal_coordinator, entry))
 
-    # Derived monetary totals used by the shipped dashboards.
-    sensors.extend(
-        [
-            SolarCubeTotalValueFromPriceSensor(
-                data_coordinator,
-                entry,
-                key="grid_buy_active_energy_total_cost",
-                name="Grid Buy Active Energy Total Cost",
-                energy_source_key="grid_buy_active_energy",
-                price_key="buy_energy_price",
-                currency=hass_currency,
-            ),
-            SolarCubeTotalValueFromPriceSensor(
-                data_coordinator,
-                entry,
-                key="grid_sell_active_energy_total_compensation",
-                name="Grid Sell Active Energy Total Compensation",
-                energy_source_key="grid_sell_active_energy",
-                price_key="sell_energy_price",
-                currency=hass_currency,
-            ),
-        ]
-    )
-
     # Derived/template-like forecast point sensors.
     sensors.extend(
         [
@@ -735,50 +711,3 @@ class SolarCubePeriodMeterSensor(
             "_last_total": self._last_total,
         }
         return round(max(out, 0.0), 5)
-
-
-class SolarCubeTotalValueFromPriceSensor(
-    CoordinatorEntity[SolarCubeDataCoordinator], SensorEntity
-):
-    _attr_should_poll = False
-    _attr_state_class = "total"
-    _attr_device_class = "monetary"
-
-    def __init__(
-        self,
-        coordinator: SolarCubeDataCoordinator,
-        entry: ConfigEntry,
-        *,
-        key: str,
-        name: str,
-        energy_source_key: str,
-        price_key: str,
-        currency: str | None,
-    ) -> None:
-        super().__init__(coordinator)
-        self._energy_source_key = energy_source_key
-        self._price_key = price_key
-        prefix = _unique_id_prefix(entry)
-        self._attr_unique_id = f"{prefix}_{key}"
-        self._attr_name = name
-        # Use Home Assistant configured currency (ISO 4217 code, e.g. PLN/EUR/USD).
-        self._attr_native_unit_of_measurement = currency
-        if currency is None:
-            self._attr_device_class = None
-
-    @property
-    def native_value(self):
-        raw_energy_wh = self.coordinator.data.get(self._energy_source_key)
-        raw_price = self.coordinator.data.get(self._price_key)
-
-        try:
-            energy_wh = float(raw_energy_wh)
-            price_per_kwh = float(raw_price)
-        except (TypeError, ValueError):
-            return None
-
-        if energy_wh <= 0:
-            return None
-
-        value = (energy_wh / 1000.0) * price_per_kwh
-        return round(value, 5)
