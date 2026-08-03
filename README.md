@@ -140,6 +140,17 @@ The LCD uses Font Awesome Solid glyphs. Pillow can only read `.woff2` when its b
 
 Without it the renderer falls back to simplified vector icons and logs a warning.
 
+## Installing without HACS
+
+For a device that cannot reach HACS, build a tarball and copy it across:
+
+```bash
+./scripts/build_release_archive.sh
+```
+
+See [docs/INSTALL_FROM_ARCHIVE.md](docs/INSTALL_FROM_ARCHIVE.md) for the transfer
+and install steps, including the Docker and Docker-in-Docker cases.
+
 ## Development
 
 ```bash

@@ -17,6 +17,7 @@ htmlcov/
 **/.DS_Store
 
 # Build / packaging artifacts
+dist/
 *.tar
 *.tar.gz
 *.zip
