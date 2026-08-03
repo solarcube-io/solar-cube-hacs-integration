@@ -74,7 +74,17 @@ def main() -> int:
 
     # Every dashboard referenced by DASHBOARD_SPECS must actually be shipped.
     sys.path.insert(0, str(ROOT))
-    from custom_components.solar_cube.const import DASHBOARD_SPECS
+    # Loaded straight from the file rather than imported as part of the
+    # package: importing custom_components.solar_cube pulls in influxdb_client,
+    # and this check is meant to run with nothing but PyYAML installed.
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location(
+        "solar_cube_const", COMPONENT / "const.py"
+    )
+    const = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(const)
+    DASHBOARD_SPECS = const.DASHBOARD_SPECS
 
     for lang, specs in DASHBOARD_SPECS.items():
         for spec in specs:

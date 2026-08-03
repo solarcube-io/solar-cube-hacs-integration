@@ -320,3 +320,35 @@ class TestHassfestRules:
 
         walk(json.loads((TRANSLATIONS / f"{lang}.json").read_text(encoding="utf-8")))
         assert not offenders, offenders
+
+    @pytest.mark.parametrize("lang", ("en", "pl"))
+    def test_an_issue_is_either_fixable_or_descriptive(self, lang) -> None:
+        """hassfest declares description and fix_flow mutually exclusive:
+
+            vol.Exclusive("description", "fixable")
+            vol.Exclusive("fix_flow", "fixable")
+
+        restart_required carried both, so the repair could not be validated.
+        """
+        data = json.loads((TRANSLATIONS / f"{lang}.json").read_text(encoding="utf-8"))
+        both = [
+            name
+            for name, issue in (data.get("issues") or {}).items()
+            if "description" in issue and "fix_flow" in issue
+        ]
+        assert not both, f"{lang}: issues with both description and fix_flow: {both}"
+
+    @pytest.mark.parametrize("lang", ("en", "pl"))
+    def test_no_translation_string_has_stray_whitespace(self, lang) -> None:
+        """hassfest: "the string should not contain leading or trailing spaces"."""
+        offenders: list[str] = []
+
+        def walk(node, path: str = "") -> None:
+            if isinstance(node, dict):
+                for key, value in node.items():
+                    walk(value, f"{path}.{key}")
+            elif isinstance(node, str) and node != node.strip():
+                offenders.append(f"{path}: {node!r}")
+
+        walk(json.loads((TRANSLATIONS / f"{lang}.json").read_text(encoding="utf-8")))
+        assert not offenders, offenders

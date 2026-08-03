@@ -82,11 +82,10 @@
         "step": {
           "confirm": {
             "title": "Restart Home Assistant",
-            "description": "Home Assistant will restart immediately so that Solar Cube can finish its installation. Any unsaved changes in other browser tabs will be lost."
+            "description": "Home Assistant will restart immediately so that Solar Cube can finish its installation. Any unsaved changes in other browser tabs will be lost. After the restart, hard-refresh your browser (Ctrl+F5 or Cmd+Shift+R) to load the updated frontend resources."
           }
         }
-      },
-      "description": "Restart of Home Assistant is required to finish download/update of {integration}. Click submit to restart now. After the restart, hard-refresh your browser (Ctrl+F5 or Cmd+Shift+R) to load the updated frontend resources."
+      }
     },
     "lcd_bridge_problem": {
       "title": "Solar Cube LCD display unavailable",

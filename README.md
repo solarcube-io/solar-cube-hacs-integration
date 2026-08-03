@@ -11,7 +11,8 @@ Custom HACS-friendly integration that connects Home Assistant to your Solar Cube
 - Optional Solar Cube PRO S1 LCD status display via the companion [Solar LCD Bridge](#solar-cube-pro-s1-lcd-display-optional) project.
 
 ## Compatibility
-- Requires Home Assistant Core 2025.12.3 or newer.
+- Requires Home Assistant Core 2026.1.3 or newer, with frontend 20260107.2 or
+  newer. The test suite runs against exactly that core version.
 
 ## Installation (HACS)
 

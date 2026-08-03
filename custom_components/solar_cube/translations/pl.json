@@ -82,11 +82,10 @@
         "step": {
           "confirm": {
             "title": "Zrestartuj Home Assistant",
-            "description": "Home Assistant zostanie natychmiast zrestartowany, aby Solar Cube mógł dokończyć instalację. Niezapisane zmiany w innych kartach przeglądarki zostaną utracone."
+            "description": "Home Assistant zostanie natychmiast zrestartowany, aby Solar Cube mógł dokończyć instalację. Niezapisane zmiany w innych kartach przeglądarki zostaną utracone. Po restarcie odśwież przeglądarkę (Ctrl+F5 lub Cmd+Shift+R), aby załadować zaktualizowane zasoby frontendu."
           }
         }
-      },
-      "description": "Aby dokończyć pobieranie/aktualizację {integration}, wymagany jest restart Home Assistant. Kliknij Wyślij, aby zrestartować teraz. Po restarcie wykonaj twarde odświeżenie przeglądarki (Ctrl+F5 lub Cmd+Shift+R), aby wczytać zaktualizowane zasoby frontendu."
+      }
     },
     "lcd_bridge_problem": {
       "title": "Wyświetlacz LCD Solar Cube niedostępny",
