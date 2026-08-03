@@ -3,15 +3,8 @@ from __future__ import annotations
 
 import asyncio
 import logging
+from collections import defaultdict
 from typing import Any
-
-from homeassistant.core import HomeAssistant
-from homeassistant.exceptions import ConfigEntryAuthFailed
-from homeassistant.helpers.update_coordinator import (
-    DataUpdateCoordinator,
-    UpdateFailed,
-)
-from homeassistant.util import dt as dt_util
 
 from .api import SolarCubeApi, SolarCubeApiAuthError, SolarCubeApiRequestError
 from .const import (
@@ -23,10 +16,59 @@ from .const import (
     UPDATE_INTERVAL,
 )
 
+from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import ConfigEntryAuthFailed
+from homeassistant.helpers.update_coordinator import (
+    DataUpdateCoordinator,
+    UpdateFailed,
+)
+from homeassistant.util import dt as dt_util
+
 _LOGGER = logging.getLogger(__name__)
 
+LAST_UPDATE_KEY = "_last_update"
 
-class SolarCubeDataCoordinator(DataUpdateCoordinator[dict[str, Any]]):
+# Grouping key for batched queries: one InfluxDB round-trip per distinct group.
+_QueryGroup = tuple[str, str, str]  # (bucket, measurement, range_start)
+
+
+class _SolarCubeCoordinator(DataUpdateCoordinator[Any]):
+    """Shared error translation for all Solar Cube coordinators."""
+
+    def __init__(
+        self,
+        hass: HomeAssistant,
+        api: SolarCubeApi,
+        entry_data: dict[str, Any],
+        name: str,
+        update_interval: Any,
+    ) -> None:
+        self.api = api
+        self.entry_data = entry_data
+        super().__init__(
+            hass,
+            _LOGGER,
+            name=f"{DOMAIN}_{name}",
+            update_interval=update_interval,
+        )
+
+    async def _async_update_data(self) -> Any:
+        try:
+            return await self._async_fetch()
+        except SolarCubeApiAuthError as err:
+            raise ConfigEntryAuthFailed("InfluxDB unauthorized") from err
+        except SolarCubeApiRequestError as err:
+            raise UpdateFailed(str(err)) from err
+
+    async def _async_fetch(self) -> Any:
+        raise NotImplementedError
+
+    @property
+    def _agents_bucket(self) -> str:
+        return self.entry_data[CONF_AGENTS_BUCKET]
+
+
+class SolarCubeDataCoordinator(_SolarCubeCoordinator):
     """Coordinator for simple scalar values."""
 
     def __init__(
@@ -36,48 +78,65 @@ class SolarCubeDataCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         entry_data: dict[str, Any],
         sensor_definitions: list[dict[str, Any]],
     ) -> None:
-        self.api = api
-        self.entry_data = entry_data
         self.sensor_definitions = sensor_definitions
-        super().__init__(
-            hass,
-            _LOGGER,
-            name=f"{DOMAIN}_data",
-            update_interval=UPDATE_INTERVAL,
+        super().__init__(hass, api, entry_data, "data", UPDATE_INTERVAL)
+
+    def _bucket_for(self, definition: dict[str, Any]) -> str:
+        """Resolve a definition's logical source to the configured bucket name.
+
+        Definitions declare ``source: "agents"`` or omit it for live data; the
+        actual bucket names are user-configurable, so they must never be
+        hard-coded in the definitions themselves.
+        """
+
+        if definition.get("source") == "agents":
+            return self.entry_data[CONF_AGENTS_BUCKET]
+        return self.entry_data[CONF_DATA_BUCKET]
+
+    def _query_groups(self) -> dict[_QueryGroup, dict[str, str]]:
+        """Group sensor definitions into one batch per bucket/measurement/range.
+
+        Returns a mapping of group -> {influx field name: sensor key}.
+        """
+
+        groups: dict[_QueryGroup, dict[str, str]] = defaultdict(dict)
+        for definition in self.sensor_definitions:
+            group = (
+                self._bucket_for(definition),
+                definition["measurement"],
+                definition.get("range_start", "-5m"),
+            )
+            groups[group][definition["field"]] = definition["key"]
+        return groups
+
+    async def _async_fetch(self) -> dict[str, Any]:
+        groups = self._query_groups()
+
+        async def _fetch_group(
+            group: _QueryGroup, fields: dict[str, str]
+        ) -> dict[str, Any]:
+            bucket, measurement, range_start = group
+            raw = await self.api.async_query_last_batch(
+                bucket=bucket,
+                measurement=measurement,
+                fields=list(fields),
+                range_start=range_start,
+            )
+            # Fields with no point in the window are reported as None.
+            return {key: raw.get(field) for field, key in fields.items()}
+
+        results = await asyncio.gather(
+            *(_fetch_group(group, fields) for group, fields in groups.items())
         )
 
-    async def _async_update_data(self) -> dict[str, Any]:
-        try:
-            data_bucket = self.entry_data.get(CONF_DATA_BUCKET)
-
-            async def _fetch_value(
-                definition: dict[str, Any]
-            ) -> tuple[str, Any]:
-                bucket = definition.get("bucket", data_bucket)
-                value = await self.api.async_query_last(
-                    bucket=bucket,
-                    measurement=definition["measurement"],
-                    field=definition["field"],
-                    range_start=definition.get("range_start", "-5m"),
-                )
-                return definition["key"], value
-
-            results = await asyncio.gather(
-                *(_fetch_value(d) for d in self.sensor_definitions)
-            )
-            values = dict(results)
-
-            values["_last_update"] = dt_util.utcnow().isoformat()
-            return values
-        except SolarCubeApiAuthError as err:
-            raise ConfigEntryAuthFailed("InfluxDB unauthorized") from err
-        except SolarCubeApiRequestError as err:
-            raise UpdateFailed(str(err)) from err
+        values: dict[str, Any] = {}
+        for chunk in results:
+            values.update(chunk)
+        values[LAST_UPDATE_KEY] = dt_util.utcnow().isoformat()
+        return values
 
 
-class SolarCubeForecastCoordinator(
-    DataUpdateCoordinator[list[dict[str, Any]]]
-):
+class SolarCubeForecastCoordinator(_SolarCubeCoordinator):
     """Coordinator for forecast data."""
 
     def __init__(
@@ -86,30 +145,16 @@ class SolarCubeForecastCoordinator(
         api: SolarCubeApi,
         entry_data: dict[str, Any],
     ) -> None:
-        self.api = api
-        self.entry_data = entry_data
-        super().__init__(
-            hass,
-            _LOGGER,
-            name=f"{DOMAIN}_forecast",
-            update_interval=FORECAST_UPDATE_INTERVAL,
+        super().__init__(hass, api, entry_data, "forecast", FORECAST_UPDATE_INTERVAL)
+
+    async def _async_fetch(self) -> list[dict[str, Any]]:
+        return await self.api.async_get_forecast(
+            bucket=self._agents_bucket,
+            hass_timezone=self.hass.config.time_zone,
         )
 
-    async def _async_update_data(self) -> list[dict[str, Any]]:
-        try:
-            return await self.api.async_get_forecast(
-                bucket=self.entry_data[CONF_AGENTS_BUCKET],
-                hass_timezone=self.hass.config.time_zone,
-            )
-        except SolarCubeApiAuthError as err:
-            raise ConfigEntryAuthFailed("InfluxDB unauthorized") from err
-        except SolarCubeApiRequestError as err:
-            raise UpdateFailed(str(err)) from err
 
-
-class SolarCubeOptimalActionsCoordinator(
-    DataUpdateCoordinator[list[dict[str, Any]]]
-):
+class SolarCubeOptimalActionsCoordinator(_SolarCubeCoordinator):
     """Coordinator for optimal actions data."""
 
     def __init__(
@@ -118,22 +163,12 @@ class SolarCubeOptimalActionsCoordinator(
         api: SolarCubeApi,
         entry_data: dict[str, Any],
     ) -> None:
-        self.api = api
-        self.entry_data = entry_data
         super().__init__(
-            hass,
-            _LOGGER,
-            name=f"{DOMAIN}_optimal_actions",
-            update_interval=OPTIMAL_ACTIONS_UPDATE_INTERVAL,
+            hass, api, entry_data, "optimal_actions", OPTIMAL_ACTIONS_UPDATE_INTERVAL
         )
 
-    async def _async_update_data(self) -> list[dict[str, Any]]:
-        try:
-            return await self.api.async_get_optimal_actions(
-                bucket=self.entry_data[CONF_AGENTS_BUCKET],
-                hass_timezone=self.hass.config.time_zone,
-            )
-        except SolarCubeApiAuthError as err:
-            raise ConfigEntryAuthFailed("InfluxDB unauthorized") from err
-        except SolarCubeApiRequestError as err:
-            raise UpdateFailed(str(err)) from err
+    async def _async_fetch(self) -> list[dict[str, Any]]:
+        return await self.api.async_get_optimal_actions(
+            bucket=self._agents_bucket,
+            hass_timezone=self.hass.config.time_zone,
+        )

@@ -73,7 +73,7 @@ views:
               colorize_states: false
             series:
               - entity: sensor.daily_consumption_energy
-                name: Dzisiejsze zarejestrowane zużycie prądu
+                name: Dzisiejsze zarejestrowane zużycie energii
                 color: '#743029'
                 group_by:
                   func: last
@@ -82,7 +82,7 @@ views:
                   in_header: false
                 float_precision: 2
               - entity: sensor.solar_cube_energy_forecast
-                name: Pozostałe zużycie prądu dzisiaj
+                name: Pozostałe zużycie energii dzisiaj
                 data_generator: |
                   return entity.attributes.forecast.map(item => {
                     const roundedValue = Math.round(item.cf * 100) / 100;
@@ -143,7 +143,7 @@ views:
             now:
               show: true
               color: red
-              label: Now
+              label: Teraz
             yaxis:
               - id: first
                 decimals: 2
@@ -192,7 +192,7 @@ views:
                 fill_raw: 'null'
                 yaxis_id: first
               - entity: sensor.solar_cube_energy_forecast
-                name: Prognoza produckji PV (kWh)
+                name: Prognoza produkcji PV (kWh)
                 data_generator: |
                   return (entity?.attributes?.forecast ?? [])
                     .map(item => {
@@ -225,7 +225,7 @@ views:
                 fill_raw: 'null'
                 yaxis_id: second
               - entity: sensor.solar_cube_energy_forecast
-                name: Taryfa zakupu energii (per kWh)
+                name: Cena zakupu (za kWh)
                 data_generator: |
                   return (entity?.attributes?.forecast ?? [])
                     .map(item => {
@@ -259,7 +259,7 @@ views:
                 fill_raw: 'null'
                 yaxis_id: second
               - entity: sensor.solar_cube_energy_forecast
-                name: Dynamiczna cena sprzedaży (per kWh)
+                name: Cena sprzedaży (za kWh)
                 data_generator: |
                   return (entity?.attributes?.forecast ?? [])
                     .map(item => {
@@ -316,7 +316,7 @@ views:
               colorize_states: false
             series:
               - entity: sensor.solar_cube_energy_forecast
-                name: Prognozowana producja PV (kWh)
+                name: Prognozowana produkcja PV (kWh)
                 data_generator: |
                   return entity.attributes.forecast.map(item => {
                     return [new Date(item.dt).getTime(), item.pf];

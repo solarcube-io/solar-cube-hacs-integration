@@ -1,0 +1,53 @@
+[project]
+name = "solar-cube-hacs-integration"
+version = "0.2.0"
+description = "Home Assistant integration for Solar Cube HEMS"
+requires-python = ">=3.13"
+
+[tool.ruff]
+target-version = "py313"
+line-length = 88
+extend-exclude = ["tools/fontawesome-free-*-web"]
+
+[tool.ruff.lint]
+select = [
+    "E",    # pycodestyle errors
+    "F",    # pyflakes
+    "W",    # pycodestyle warnings
+    "I",    # isort
+    "UP",   # pyupgrade
+    "B",    # flake8-bugbear
+    "C4",   # comprehensions
+    "SIM",  # simplify
+    "TRY",  # tryceratops
+    "RUF",  # ruff-specific
+    "BLE",  # blind except
+    "S",    # bandit
+]
+ignore = [
+    "E501",    # line length is handled by the formatter
+    "TRY003",  # long messages outside exception classes are fine here
+    "TRY300",  # return-in-try reads better in several flows
+    "S101",    # assert is fine in tests
+    # The source deliberately uses en dashes, × and box-drawing characters in
+    # comments, docstrings and log messages.
+    "RUF001",
+    "RUF002",
+    "RUF003",
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["S", "BLE", "TRY"]
+# S105: these are option *key* names, not credentials.
+"custom_components/solar_cube/const.py" = ["S105"]
+# S310: the bridge URL is operator-supplied configuration, not attacker input.
+"custom_components/solar_cube/solar_lcd.py" = ["S310"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["custom_components"]
+forced-separate = ["homeassistant"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+addopts = "-q"

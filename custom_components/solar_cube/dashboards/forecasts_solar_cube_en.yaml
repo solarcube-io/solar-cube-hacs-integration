@@ -259,7 +259,7 @@ views:
                 fill_raw: 'null'
                 yaxis_id: second
               - entity: sensor.solar_cube_energy_forecast
-                name: Sell price ( per kWh)
+                name: Sell price (per kWh)
                 data_generator: |
                   return (entity?.attributes?.forecast ?? [])
                     .map(item => {

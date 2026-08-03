@@ -1,19 +1,13 @@
 """Config flow for Solar Cube HEMS."""
 from __future__ import annotations
 
+from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
 
 import voluptuous as vol
-from homeassistant import config_entries
-from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import CONF_NAME, CONF_URL, CONF_TOKEN
-from homeassistant.core import callback
-from homeassistant.data_entry_flow import FlowResult
-from homeassistant.util.yaml import Secrets, load_yaml_dict
 
 from .api import SolarCubeApi, SolarCubeApiAuthError, SolarCubeApiRequestError
-
 from .const import (
     CONF_AGENTS_BUCKET,
     CONF_CONFIGURE_ENERGY_DASHBOARD,
@@ -22,18 +16,58 @@ from .const import (
     CONF_LANGUAGE,
     CONF_ORG,
     CONF_RUN_FRONTEND_INSTALLER,
+    CONF_S1_LCD_BRIDGE_TOKEN,
+    CONF_S1_LCD_BRIDGE_URL,
+    CONF_S1_LCD_DISPLAY,
     DEFAULT_AGENTS_BUCKET,
     DEFAULT_CONFIGURE_ENERGY_DASHBOARD,
     DEFAULT_DATA_BUCKET,
     DEFAULT_IMPORT_DASHBOARDS,
     DEFAULT_NAME,
     DEFAULT_ORG,
+    DEFAULT_RUN_FRONTEND_INSTALLER,
+    DEFAULT_S1_LCD_BRIDGE_TOKEN,
+    DEFAULT_S1_LCD_BRIDGE_URL,
+    DEFAULT_S1_LCD_DISPLAY,
     DEFAULT_URL,
     DOMAIN,
+    INTERNAL_OPTION_KEYS,
+    SUPPORTED_LANGUAGES,
+    normalize_language,
 )
 
+from homeassistant import config_entries
+from homeassistant.config_entries import ConfigEntry
+from homeassistant.const import CONF_NAME, CONF_TOKEN, CONF_URL
+from homeassistant.core import callback
+from homeassistant.data_entry_flow import FlowResult
+from homeassistant.util.yaml import Secrets, load_yaml_dict
 
-@config_entries.HANDLERS.register(DOMAIN)
+
+async def _async_validate_connection(
+    hass: Any, url: str, token: str, org: str, bucket: str | None
+) -> str | None:
+    """Validate InfluxDB credentials. Returns an error key, or None on success.
+
+    The client is always closed, including when construction itself fails.
+    """
+
+    api: SolarCubeApi | None = None
+    try:
+        api = SolarCubeApi(url=url, token=token, org=org)
+        await api.async_validate(bucket=bucket)
+    except SolarCubeApiAuthError:
+        return "invalid_auth"
+    except SolarCubeApiRequestError:
+        return "cannot_connect"
+    except Exception:  # noqa: BLE001
+        return "unknown"
+    finally:
+        if api is not None:
+            await hass.async_add_executor_job(api.close)
+    return None
+
+
 class SolarCubeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Handle a config flow for Solar Cube."""
 
@@ -44,16 +78,14 @@ class SolarCubeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     async def _async_token_from_configuration_yaml(self) -> str:
         """Load influxdb_token from configuration.yaml (best-effort)."""
 
-        config_path = Path(self.hass.config.config_dir) / "configuration.yaml"
-        if not config_path.exists():
-            return ""
+        config_dir = Path(self.hass.config.config_dir)
+        config_path = config_dir / "configuration.yaml"
 
         def _read() -> str:
+            if not config_path.is_file():
+                return ""
             try:
-                data = load_yaml_dict(
-                    str(config_path),
-                    Secrets(Path(self.hass.config.config_dir)),
-                )
+                data = load_yaml_dict(str(config_path), Secrets(config_dir))
             except Exception:  # noqa: BLE001
                 return ""
 
@@ -77,28 +109,14 @@ class SolarCubeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
             if not token:
                 errors["base"] = "missing_token"
-            else:
-                try:
-                    api = SolarCubeApi(
-                        url=user_input[CONF_URL],
-                        token=token,
-                        org=user_input[CONF_ORG],
-                    )
-                    await api.async_validate(
-                        bucket=user_input.get(CONF_DATA_BUCKET)
-                        or DEFAULT_DATA_BUCKET
-                    )
-                except SolarCubeApiAuthError:
-                    errors["base"] = "invalid_auth"
-                except SolarCubeApiRequestError:
-                    errors["base"] = "cannot_connect"
-                except Exception:  # noqa: BLE001
-                    errors["base"] = "unknown"
-                finally:
-                    try:
-                        api.close()
-                    except Exception:  # noqa: BLE001
-                        pass
+            elif error := await _async_validate_connection(
+                self.hass,
+                url=user_input[CONF_URL],
+                token=token,
+                org=user_input[CONF_ORG],
+                bucket=user_input.get(CONF_DATA_BUCKET) or DEFAULT_DATA_BUCKET,
+            ):
+                errors["base"] = error
 
             if not errors:
                 await self.async_set_unique_id(DOMAIN)
@@ -110,33 +128,42 @@ class SolarCubeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     data=entry_data,
                 )
 
+        default_language = normalize_language(
+            getattr(self.hass.config, "language", None)
+        )
         schema = vol.Schema(
             {
                 vol.Optional(CONF_NAME, default=DEFAULT_NAME): str,
                 vol.Required(CONF_URL, default=DEFAULT_URL): str,
                 vol.Optional(CONF_TOKEN, default=""): str,
                 vol.Required(CONF_ORG, default=DEFAULT_ORG): str,
-                vol.Optional(
-                    CONF_DATA_BUCKET, default=DEFAULT_DATA_BUCKET
-                ): str,
-                vol.Optional(
-                    CONF_AGENTS_BUCKET, default=DEFAULT_AGENTS_BUCKET
-                ): str,
+                vol.Optional(CONF_DATA_BUCKET, default=DEFAULT_DATA_BUCKET): str,
+                vol.Optional(CONF_AGENTS_BUCKET, default=DEFAULT_AGENTS_BUCKET): str,
                 vol.Optional(
                     CONF_IMPORT_DASHBOARDS, default=DEFAULT_IMPORT_DASHBOARDS
                 ): bool,
-                vol.Optional(
-                    CONF_LANGUAGE,
-                    default=(getattr(self.hass.config, "language", None) or "en").split("-")[0],
-                ): vol.In({"pl": "Polski", "en": "English"}),
+                vol.Optional(CONF_LANGUAGE, default=default_language): vol.In(
+                    SUPPORTED_LANGUAGES
+                ),
+                # Opt-in: this downloads third-party JavaScript from GitHub and
+                # registers it as a Lovelace resource. See the README warning.
                 vol.Optional(
                     CONF_RUN_FRONTEND_INSTALLER,
-                    default=True,
+                    default=DEFAULT_RUN_FRONTEND_INSTALLER,
                 ): bool,
                 vol.Optional(
                     CONF_CONFIGURE_ENERGY_DASHBOARD,
                     default=DEFAULT_CONFIGURE_ENERGY_DASHBOARD,
                 ): bool,
+                vol.Optional(
+                    CONF_S1_LCD_DISPLAY, default=DEFAULT_S1_LCD_DISPLAY
+                ): bool,
+                vol.Optional(
+                    CONF_S1_LCD_BRIDGE_URL, default=DEFAULT_S1_LCD_BRIDGE_URL
+                ): str,
+                vol.Optional(
+                    CONF_S1_LCD_BRIDGE_TOKEN, default=DEFAULT_S1_LCD_BRIDGE_TOKEN
+                ): str,
             }
         )
 
@@ -145,14 +172,12 @@ class SolarCubeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         )
 
     async def async_step_reauth(
-        self, user_input: dict[str, Any]
+        self, entry_data: Mapping[str, Any]
     ) -> FlowResult:
         """Handle a re-authentication flow initiated by Home Assistant."""
         entry_id = self.context.get("entry_id")
         self._reauth_entry = (
-            self.hass.config_entries.async_get_entry(entry_id)
-            if entry_id
-            else None
+            self.hass.config_entries.async_get_entry(entry_id) if entry_id else None
         )
         return await self.async_step_reauth_confirm()
 
@@ -165,46 +190,32 @@ class SolarCubeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         if entry is None:
             return self.async_abort(reason="unknown")
 
-        if user_input is not None:
-            try:
-                api = SolarCubeApi(
-                    url=entry.options.get(CONF_URL, entry.data[CONF_URL]),
-                    token=user_input[CONF_TOKEN],
-                    org=entry.options.get(CONF_ORG, entry.data[CONF_ORG]),
-                )
-                data_bucket = entry.options.get(
-                    CONF_DATA_BUCKET,
-                    entry.data.get(CONF_DATA_BUCKET, DEFAULT_DATA_BUCKET),
-                )
-                await api.async_validate(bucket=data_bucket)
-            except SolarCubeApiAuthError:
-                errors["base"] = "invalid_auth"
-            except SolarCubeApiRequestError:
-                errors["base"] = "cannot_connect"
-            except Exception:  # noqa: BLE001
-                errors["base"] = "unknown"
-            finally:
-                try:
-                    api.close()
-                except Exception:  # noqa: BLE001
-                    pass
+        current = {**entry.data, **entry.options}
 
-            if not errors:
-                # Store token in options because entry.options override entry.data in async_setup_entry.
-                new_options = {
-                    **entry.options,
-                    CONF_TOKEN: user_input[CONF_TOKEN],
-                }
-                new_data = {**entry.data, CONF_TOKEN: user_input[CONF_TOKEN]}
+        if user_input is not None:
+            token = user_input[CONF_TOKEN].strip()
+            if error := await _async_validate_connection(
+                self.hass,
+                url=current[CONF_URL],
+                token=token,
+                org=current[CONF_ORG],
+                bucket=current.get(CONF_DATA_BUCKET, DEFAULT_DATA_BUCKET),
+            ):
+                errors["base"] = error
+            else:
+                # entry.options overrides entry.data in async_setup_entry, so the
+                # token is stored in options only -- keeping a stale copy in data
+                # would duplicate the secret without ever being read.
                 self.hass.config_entries.async_update_entry(
-                    entry, data=new_data, options=new_options
+                    entry, options={**entry.options, CONF_TOKEN: token}
                 )
                 await self.hass.config_entries.async_reload(entry.entry_id)
                 return self.async_abort(reason="reauth_successful")
 
-        schema = vol.Schema({vol.Required(CONF_TOKEN): str})
         return self.async_show_form(
-            step_id="reauth_confirm", data_schema=schema, errors=errors
+            step_id="reauth_confirm",
+            data_schema=vol.Schema({vol.Required(CONF_TOKEN): str}),
+            errors=errors,
         )
 
     @staticmethod
@@ -229,59 +240,62 @@ class SolarCubeOptionsFlowHandler(config_entries.OptionsFlow):
         current = {**self._entry.data, **self._entry.options}
 
         if user_input is not None:
-            # Treat empty token as "keep existing" to avoid leaking it via defaults.
+            # Treat an empty token as "keep existing" to avoid leaking it via defaults.
             token = (user_input.get(CONF_TOKEN) or "").strip()
             candidate_token = token or current.get(CONF_TOKEN, "")
 
-            try:
-                api = SolarCubeApi(
-                    url=user_input[CONF_URL],
-                    token=candidate_token,
-                    org=user_input[CONF_ORG],
-                )
-                await api.async_validate(bucket=user_input[CONF_DATA_BUCKET])
-            except SolarCubeApiAuthError:
-                errors["base"] = "invalid_auth"
-            except SolarCubeApiRequestError:
-                errors["base"] = "cannot_connect"
-            except Exception:  # noqa: BLE001
-                errors["base"] = "unknown"
-            finally:
-                try:
-                    api.close()
-                except Exception:  # noqa: BLE001
-                    pass
+            if error := await _async_validate_connection(
+                self.hass,
+                url=user_input[CONF_URL],
+                token=candidate_token,
+                org=user_input[CONF_ORG],
+                bucket=user_input[CONF_DATA_BUCKET],
+            ):
+                errors["base"] = error
 
             if not errors:
-                # Persist most fields as options (override entry.data).
-                new_options = {
-                    **self._entry.options,
-                    CONF_URL: user_input[CONF_URL],
-                    CONF_ORG: user_input[CONF_ORG],
-                    CONF_DATA_BUCKET: user_input[CONF_DATA_BUCKET],
-                    CONF_AGENTS_BUCKET: user_input[CONF_AGENTS_BUCKET],
-                    CONF_IMPORT_DASHBOARDS: user_input[CONF_IMPORT_DASHBOARDS],
-                    CONF_CONFIGURE_ENERGY_DASHBOARD: user_input.get(
-                        CONF_CONFIGURE_ENERGY_DASHBOARD,
-                        current.get(
-                            CONF_CONFIGURE_ENERGY_DASHBOARD,
-                            DEFAULT_CONFIGURE_ENERGY_DASHBOARD,
-                        ),
-                    ),
-                    CONF_LANGUAGE: user_input.get(
-                        CONF_LANGUAGE,
-                        current.get(CONF_LANGUAGE, "en"),
-                    ),
+                # Preserve internal bookkeeping options; async_create_entry replaces
+                # the whole options mapping, so anything omitted here is lost.
+                new_options: dict[str, Any] = {
+                    key: value
+                    for key, value in self._entry.options.items()
+                    if key in INTERNAL_OPTION_KEYS
                 }
-                # Store installer hook flag in options so it can be toggled later.
-                new_options[CONF_RUN_FRONTEND_INSTALLER] = user_input.get(
-                    CONF_RUN_FRONTEND_INSTALLER, True
+                new_options.update(
+                    {
+                        CONF_URL: user_input[CONF_URL],
+                        CONF_ORG: user_input[CONF_ORG],
+                        CONF_DATA_BUCKET: user_input[CONF_DATA_BUCKET],
+                        CONF_AGENTS_BUCKET: user_input[CONF_AGENTS_BUCKET],
+                        CONF_IMPORT_DASHBOARDS: user_input[CONF_IMPORT_DASHBOARDS],
+                        CONF_CONFIGURE_ENERGY_DASHBOARD: user_input[
+                            CONF_CONFIGURE_ENERGY_DASHBOARD
+                        ],
+                        CONF_LANGUAGE: normalize_language(
+                            user_input.get(CONF_LANGUAGE),
+                            current.get(CONF_LANGUAGE),
+                        ),
+                        CONF_RUN_FRONTEND_INSTALLER: user_input.get(
+                            CONF_RUN_FRONTEND_INSTALLER,
+                            DEFAULT_RUN_FRONTEND_INSTALLER,
+                        ),
+                        CONF_S1_LCD_DISPLAY: user_input.get(
+                            CONF_S1_LCD_DISPLAY, DEFAULT_S1_LCD_DISPLAY
+                        ),
+                        CONF_S1_LCD_BRIDGE_URL: user_input.get(
+                            CONF_S1_LCD_BRIDGE_URL, DEFAULT_S1_LCD_BRIDGE_URL
+                        ),
+                        CONF_S1_LCD_BRIDGE_TOKEN: user_input.get(
+                            CONF_S1_LCD_BRIDGE_TOKEN, DEFAULT_S1_LCD_BRIDGE_TOKEN
+                        ),
+                    }
                 )
                 if token:
                     new_options[CONF_TOKEN] = token
+                elif CONF_TOKEN in self._entry.options:
+                    new_options[CONF_TOKEN] = self._entry.options[CONF_TOKEN]
 
                 new_title = user_input.get(CONF_NAME) or self._entry.title
-                # Update the entry title; options are returned via async_create_entry.
                 if new_title != self._entry.title:
                     self.hass.config_entries.async_update_entry(
                         self._entry, title=new_title
@@ -305,9 +319,7 @@ class SolarCubeOptionsFlowHandler(config_entries.OptionsFlow):
                 ): str,
                 vol.Required(
                     CONF_AGENTS_BUCKET,
-                    default=current.get(
-                        CONF_AGENTS_BUCKET, DEFAULT_AGENTS_BUCKET
-                    ),
+                    default=current.get(CONF_AGENTS_BUCKET, DEFAULT_AGENTS_BUCKET),
                 ): str,
                 vol.Required(
                     CONF_IMPORT_DASHBOARDS,
@@ -317,14 +329,16 @@ class SolarCubeOptionsFlowHandler(config_entries.OptionsFlow):
                 ): bool,
                 vol.Optional(
                     CONF_LANGUAGE,
-                    default=current.get(
-                        CONF_LANGUAGE,
-                        (getattr(self.hass.config, "language", None) or "en").split("-")[0],
+                    default=normalize_language(
+                        current.get(CONF_LANGUAGE),
+                        getattr(self.hass.config, "language", None),
                     ),
-                ): vol.In({"pl": "Polski", "en": "English"}),
+                ): vol.In(SUPPORTED_LANGUAGES),
                 vol.Optional(
                     CONF_RUN_FRONTEND_INSTALLER,
-                    default=current.get(CONF_RUN_FRONTEND_INSTALLER, True),
+                    default=current.get(
+                        CONF_RUN_FRONTEND_INSTALLER, DEFAULT_RUN_FRONTEND_INSTALLER
+                    ),
                 ): bool,
                 vol.Required(
                     CONF_CONFIGURE_ENERGY_DASHBOARD,
@@ -333,6 +347,22 @@ class SolarCubeOptionsFlowHandler(config_entries.OptionsFlow):
                         DEFAULT_CONFIGURE_ENERGY_DASHBOARD,
                     ),
                 ): bool,
+                vol.Optional(
+                    CONF_S1_LCD_DISPLAY,
+                    default=current.get(CONF_S1_LCD_DISPLAY, DEFAULT_S1_LCD_DISPLAY),
+                ): bool,
+                vol.Optional(
+                    CONF_S1_LCD_BRIDGE_URL,
+                    default=current.get(
+                        CONF_S1_LCD_BRIDGE_URL, DEFAULT_S1_LCD_BRIDGE_URL
+                    ),
+                ): str,
+                vol.Optional(
+                    CONF_S1_LCD_BRIDGE_TOKEN,
+                    default=current.get(
+                        CONF_S1_LCD_BRIDGE_TOKEN, DEFAULT_S1_LCD_BRIDGE_TOKEN
+                    ),
+                ): str,
             }
         )
 

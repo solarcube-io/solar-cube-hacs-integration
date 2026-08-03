@@ -1,7 +1,25 @@
-"""Sensor definitions for Solar Cube."""
+"""Sensor definitions for Solar Cube.
+
+Each definition describes one scalar value read from InfluxDB:
+
+``key``          entity key, also the key in the coordinator's data dict
+``name``         display name (suffixed to the device name by the entity)
+``measurement``  InfluxDB measurement
+``field``        InfluxDB field
+``source``       ``"agents"`` for the forecasts/actions bucket, omitted for the
+                 live-data bucket. The concrete bucket names are user
+                 configurable, so they are resolved by the coordinator and must
+                 never be hard-coded here.
+``range_start``  Flux range start for the lookup window (default ``-5m``)
+``division``     raw value is divided by this before display
+``unit``         native unit; the literal ``"currency"`` resolves to the Home
+                 Assistant configured currency at entity-creation time
+"""
 from __future__ import annotations
 
-SENSOR_DEFINITIONS = [
+from typing import Any
+
+SENSOR_DEFINITIONS: list[dict[str, Any]] = [
     {
         "key": "grid_active_power",
         "name": "Grid Active Power",
@@ -137,7 +155,7 @@ SENSOR_DEFINITIONS = [
         "measurement": "cs",
         "field": "cs/prices/buy_total_price_per_kwh",
         "unit": "per kWh",
-        "bucket": "agents",
+        "source": "agents",
         "range_start": "-60m",
     },
     {
@@ -146,7 +164,7 @@ SENSOR_DEFINITIONS = [
         "measurement": "cs",
         "field": "cs/prices/sell_price_per_kwh",
         "unit": "per kWh",
-        "bucket": "agents",
+        "source": "agents",
         "range_start": "-60m",
     },
     {
@@ -154,7 +172,7 @@ SENSOR_DEFINITIONS = [
         "name": "Controller ID",
         "measurement": "cs",
         "field": "cs/schedule/controller",
-        "bucket": "agents",
+        "source": "agents",
         "range_start": "-60m",
     },
     {
@@ -163,7 +181,7 @@ SENSOR_DEFINITIONS = [
         "measurement": "cs",
         "field": "cs/schedule/target_soc",
         "unit": "%",
-        "bucket": "agents",
+        "source": "agents",
         "range_start": "-60m",
     },
     {
@@ -173,7 +191,8 @@ SENSOR_DEFINITIONS = [
         "field": "cs/prices/total_savings",
         "unit": "currency",
         "device_class": "monetary",
-        "bucket": "agents",
+        "state_class": "total_increasing",
+        "source": "agents",
         "range_start": "-1h",
     },
     # Scalar optimal action fields (also available inside the Optimal Actions payload).
@@ -182,7 +201,7 @@ SENSOR_DEFINITIONS = [
         "name": "Optimal Actions BC",
         "measurement": "cs",
         "field": "cs/opt_actions/bc",
-        "bucket": "agents",
+        "source": "agents",
         "range_start": "-60m",
     },
     {
@@ -190,7 +209,7 @@ SENSOR_DEFINITIONS = [
         "name": "Optimal Actions BG",
         "measurement": "cs",
         "field": "cs/opt_actions/bg",
-        "bucket": "agents",
+        "source": "agents",
         "range_start": "-60m",
     },
     {
@@ -198,7 +217,7 @@ SENSOR_DEFINITIONS = [
         "name": "Optimal Actions GB",
         "measurement": "cs",
         "field": "cs/opt_actions/gb",
-        "bucket": "agents",
+        "source": "agents",
         "range_start": "-60m",
     },
     {
@@ -206,7 +225,7 @@ SENSOR_DEFINITIONS = [
         "name": "Optimal Actions GC",
         "measurement": "cs",
         "field": "cs/opt_actions/gc",
-        "bucket": "agents",
+        "source": "agents",
         "range_start": "-60m",
     },
     {
@@ -214,7 +233,7 @@ SENSOR_DEFINITIONS = [
         "name": "Optimal Actions PB",
         "measurement": "cs",
         "field": "cs/opt_actions/pb",
-        "bucket": "agents",
+        "source": "agents",
         "range_start": "-60m",
     },
     {
@@ -222,7 +241,7 @@ SENSOR_DEFINITIONS = [
         "name": "Optimal Actions PC",
         "measurement": "cs",
         "field": "cs/opt_actions/pc",
-        "bucket": "agents",
+        "source": "agents",
         "range_start": "-60m",
     },
     {
@@ -230,7 +249,34 @@ SENSOR_DEFINITIONS = [
         "name": "Optimal Actions PG",
         "measurement": "cs",
         "field": "cs/opt_actions/pg",
-        "bucket": "agents",
+        "source": "agents",
         "range_start": "-60m",
     },
 ]
+
+# Raw InfluxDB value -> display value scaling, derived from the definitions above.
+# Shared by the sensor platform and the LCD renderer so the conversion lives in
+# exactly one place.
+DIVISIONS: dict[str, float] = {
+    definition["key"]: float(definition["division"])
+    for definition in SENSOR_DEFINITIONS
+    if definition.get("division")
+}
+
+
+def scale_value(key: str, value: Any) -> Any:
+    """Apply the configured division for ``key`` to a raw InfluxDB value.
+
+    Returns the value unchanged when there is no division for the key or when it
+    is not numeric.
+    """
+
+    if value is None:
+        return None
+    divisor = DIVISIONS.get(key)
+    if not divisor:
+        return value
+    try:
+        return float(value) / divisor
+    except (TypeError, ValueError):
+        return value

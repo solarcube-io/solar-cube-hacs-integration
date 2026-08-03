@@ -38,7 +38,7 @@
       {
         "type": "solar",
         "stat_energy_from": "sensor.pv_active_energy_total",
-        "stat_rate": "sensor.pv_active_power"
+        "stat_rate": "sensor.solar_cube_pv_active_power"
       }
     ],
     "device_consumption": [],

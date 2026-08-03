@@ -1,0 +1,12 @@
+# Pulls in Home Assistant itself plus the pytest plugin and fixtures.
+pytest-homeassistant-custom-component==0.13.298
+
+# Runtime dependency of the integration.
+influxdb-client==1.43.0
+
+# Optional at runtime (Home Assistant ships both), required to exercise the
+# LCD renderer and the frontend-dependent config flow tests.
+Pillow>=10.0.0
+home-assistant-frontend
+
+pytest-cov

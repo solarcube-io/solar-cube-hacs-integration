@@ -62,9 +62,6 @@ views:
             show_state: true
             type: glance
             entities:
-              - entity: sensor.hourly_optimisation_savings
-                name: Current 1h
-                icon: mdi:cash-check
               - entity: sensor.daily_optimisation_savings
                 name: Today
                 icon: mdi:cash-check
@@ -74,6 +71,9 @@ views:
               - entity: sensor.monthly_optimisation_savings
                 name: This month
                 icon: mdi:cash-check
+              - entity: sensor.solar_cube_optimised_energy_total_savings
+                name: Total
+                icon: mdi:cash-multiple
             title: Storage optimisation savings
             state_color: false
       - type: grid
