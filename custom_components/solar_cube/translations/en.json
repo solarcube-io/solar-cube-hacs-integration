@@ -16,8 +16,11 @@
           "run_frontend_installer": "Automatically download the required dashboard cards (recommended)",
           "configure_energy_dashboard": "Configure Home Assistant Energy dashboard",
           "s1_lcd_display": "Activate the LCD display (available on Solar Cube PRO only)",
-          "s1_lcd_bridge_url": "Solar LCD Bridge URL (http://host.docker.internal:8765)",
+          "s1_lcd_bridge_url": "Solar LCD Bridge URL",
           "s1_lcd_bridge_token": "Solar LCD Bridge token (leave as-is unless you set a custom BRIDGE_TOKEN)"
+        },
+        "data_description": {
+          "s1_lcd_bridge_url": "Only change this if the bridge does not run in the bundled container."
         }
       },
       "reauth_confirm": {
@@ -57,9 +60,12 @@
           "run_frontend_installer": "Automatically download the required dashboard cards (recommended)",
           "configure_energy_dashboard": "Configure Home Assistant Energy dashboard",
           "s1_lcd_display": "Activate the LCD display (available on Solar Cube PRO only)",
-          "s1_lcd_bridge_url": "Solar LCD Bridge URL (http://host.docker.internal:8765)",
+          "s1_lcd_bridge_url": "Solar LCD Bridge URL",
           "s1_lcd_bridge_token": "Solar LCD Bridge token (leave as-is unless you set a custom BRIDGE_TOKEN)",
           "reapply_dashboards": "Restore the built-in dashboards (replaces your own changes)"
+        },
+        "data_description": {
+          "s1_lcd_bridge_url": "Only change this if the bridge does not run in the bundled container."
         }
       }
     },

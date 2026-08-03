@@ -297,3 +297,26 @@ class TestRequestedWording:
             assert label != "reapply_dashboards"
             assert "_" not in label
             assert label[0].isupper()
+
+
+class TestHassfestRules:
+    """Rules hassfest enforces in CI. Checked here so a failure surfaces before
+    the push rather than after it."""
+
+    @pytest.mark.parametrize("lang", ("en", "pl"))
+    def test_no_translation_string_contains_a_url(self, lang) -> None:
+        """hassfest: "the string should not contain URLs, please use description
+        placeholders instead". The bridge URL option carried its default in the
+        label, which failed the check.
+        """
+        offenders: list[str] = []
+
+        def walk(node, path: str = "") -> None:
+            if isinstance(node, dict):
+                for key, value in node.items():
+                    walk(value, f"{path}.{key}")
+            elif isinstance(node, str) and re.search(r"https?://", node):
+                offenders.append(f"{path}: {node}")
+
+        walk(json.loads((TRANSLATIONS / f"{lang}.json").read_text(encoding="utf-8")))
+        assert not offenders, offenders
