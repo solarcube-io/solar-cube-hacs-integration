@@ -80,9 +80,7 @@ def test_the_manifest_version_is_a_release_number() -> None:
     assert re.fullmatch(r"\d+\.\d+\.\d+", version), version
 
 
-def test_release_notes_exist_for_the_manifest_version() -> None:
-    version = json.loads(
-        (COMPONENT / "manifest.json").read_text(encoding="utf-8")
-    )["version"]
-    notes = ROOT / "RELEASE_NOTES" / f"v{version}.md"
-    assert notes.is_file(), f"missing {notes.relative_to(ROOT)}"
+# Deliberately not checked: that RELEASE_NOTES/v<version>.md exists. .gitignore
+# keeps release notes out of the repository ("drafted locally"), so CI never
+# sees them and such a test can only ever fail there.
+

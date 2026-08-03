@@ -421,6 +421,27 @@ def _uniform_font(
     return fonts_d["nano"]
 
 
+def _shared_face(
+    fonts_d: dict[str, Any],
+    items: list[tuple[str, int]],
+    start: str,
+) -> Any:
+    """Return the largest face where every (text, width budget) pair fits.
+
+    Like ``_uniform_font``, but for labels sharing one face across *different*
+    slots. The battery card draws its title beside an icon and its state label
+    centred across the full width, so the two have different budgets and cannot
+    be fitted against a single one without shrinking the wider slot needlessly.
+    """
+    _ORDER = ["xlarge", "large", "bold", "medium", "small", "tiny", "micro", "nano"]
+    idx = _ORDER.index(start) if start in _ORDER else 0
+    for key in _ORDER[idx:]:
+        font = fonts_d[key]
+        if all(_text_width(font, text) <= max_w for text, max_w in items):
+            return font
+    return fonts_d["nano"]
+
+
 def _mode_label_font(
     fonts_d: dict[str, Any], lang: str, max_w: int, max_h: int
 ) -> Any:
@@ -828,7 +849,8 @@ def _render_image_pil(
 
     def power_card(x1: int, x2: int, icn: str, title: str, col: tuple,
                    big_val: str, unit: str = "", sub1: str = "", sub2: str = "",
-                   value_col: tuple = WHITE, unit_col: tuple = GRAY) -> None:
+                   value_col: tuple = WHITE, unit_col: tuple = GRAY,
+                   sub1_variants: tuple[str, ...] = ()) -> None:
         """Power card.  Layout adapts to number of text items:
         2 items (PV/DOM): xlarge value + small unit at bottom.
         3 items (SIEĆ):   large value and unit in one row below sub1.
@@ -839,6 +861,20 @@ def _render_image_pil(
         card_cx = (x1 + x2) // 2
         _draw_icon(draw, icn, x1 + 17, y1 + 18, col, 9, fonts.get("fa_medium"))
         title_font, title_txt = _fit_text(fonts, title, x2 - x1 - 39, "medium")
+        if sub2:
+            # The title and the state label deliberately share one face, so that
+            # face has to fit both -- and both states the label can take, not
+            # just the current one, or the card would change typography as the
+            # battery switches direction. Fitting the title alone let the Polish
+            # "ROZŁADOWANIE" run past the tile: the variable font measures ~19%
+            # wider under Linux freetype than on macOS, so it fitted where it was
+            # authored and overflowed on the device.
+            title_font = _shared_face(
+                fonts,
+                [(title_txt, x2 - x1 - 39)]
+                + [(text, x2 - x1 - 6) for text in (sub1_variants or (sub1,))],
+                "medium",
+            )
         title_y = y1 + 7
         ltext(x1 + 36, title_y, title_txt, title_font, col)
         if sub2:                             # 4-line (BAT)
@@ -890,7 +926,8 @@ def _render_image_pil(
     grid_tile_c = GRID_EXPORT_C if grid_exporting else GRID_IMPORT_C
 
     power_card(LX1, LX2, "battery", _s("bat_label", lang),  BAT_TILE_C,  soc_str, "",
-               bat_state, bat_kw, value_col=BAT_TILE_C, unit_col=BAT_TILE_C)
+               bat_state, bat_kw, value_col=BAT_TILE_C, unit_col=BAT_TILE_C,
+               sub1_variants=(_s("charging_label", lang), _s("discharging_label", lang)))
     power_card(RX1, RX2, "tower",   _s("grid_label", lang), grid_tile_c, _fmt_kw(grid_w), "kW",
                grid_flow, value_col=grid_tile_c, unit_col=grid_tile_c)
 

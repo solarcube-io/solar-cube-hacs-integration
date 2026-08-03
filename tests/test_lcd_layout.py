@@ -604,14 +604,78 @@ class TestBatteryTile:
         assert _s("discharging_label", "en") == "DISCHARGING"
         assert _s("charging_label", "en") == "CHARGING"
 
+    @staticmethod
+    def _battery_face(fonts, lang):
+        """The face the renderer picks for the battery card's title and state.
+
+        Mirrors the _shared_face call in power_card. Fitting the title alone,
+        as this test used to, only proved the label fitted on the machine the
+        test ran on: the variable font measures wider under Linux freetype, so
+        Polish passed on macOS and overflowed on the device.
+        """
+        from custom_components.solar_cube.solar_lcd import (
+            LX1,
+            LX2,
+            _fit_text,
+            _s,
+            _shared_face,
+        )
+
+        _, title_txt = _fit_text(fonts, _s("bat_label", lang), LX2 - LX1 - 39, "medium")
+        return _shared_face(
+            fonts,
+            [(title_txt, LX2 - LX1 - 39)]
+            + [
+                (_s(key, lang), LX2 - LX1 - 6)
+                for key in ("charging_label", "discharging_label")
+            ],
+            "medium",
+        )
+
     @pytest.mark.parametrize("lang", LANGUAGES)
     @pytest.mark.parametrize("key", ["charging_label", "discharging_label"])
     def test_the_state_label_fits_the_battery_tile(self, fonts, lang, key) -> None:
-        """It is drawn with the face fitted for the tile title, not its own."""
-        from custom_components.solar_cube.solar_lcd import LX1, LX2, _fit_text, _s
+        from custom_components.solar_cube.solar_lcd import LX1, LX2, _s
 
-        title_font, _ = _fit_text(
-            fonts, _s("bat_label", lang), LX2 - LX1 - 39, "medium"
-        )
-        width = _text_width(title_font, _s(key, lang))
-        assert width <= (LX2 - LX1) - 6, f"{lang}/{key}: {width}px in an 82px tile"
+        width = _text_width(self._battery_face(fonts, lang), _s(key, lang))
+        budget = (LX2 - LX1) - 6
+        assert width <= budget, f"{lang}/{key}: {width}px in {budget}px"
+
+    @pytest.mark.parametrize("lang", LANGUAGES)
+    def test_the_title_still_fits_beside_the_icon(self, fonts, lang) -> None:
+        """Shrinking the shared face for the state label must not be allowed to
+        push the title out of its own, narrower slot."""
+        from custom_components.solar_cube.solar_lcd import LX1, LX2, _s
+
+        width = _text_width(self._battery_face(fonts, lang), _s("bat_label", lang))
+        assert width <= (LX2 - LX1) - 39, f"{lang}: title {width}px"
+
+    @pytest.mark.parametrize("lang", LANGUAGES)
+    @pytest.mark.parametrize("budget", [76, 68, 60, 52, 44, 36, 28])
+    def test_the_shared_face_fits_whatever_budget_it_is_given(
+        self, fonts, lang, budget
+    ) -> None:
+        """The part that makes this platform-proof, and the part that cannot be
+        checked by measuring the labels here: on this machine Polish already fits
+        at the title's face, so the fix is a no-op locally and only the mechanism
+        can be verified. Sweeping the budget stands in for the wider metrics the
+        device reports.
+        """
+        from custom_components.solar_cube.solar_lcd import _s, _shared_face
+
+        labels = [_s(k, lang) for k in ("charging_label", "discharging_label")]
+        face = _shared_face(fonts, [(t, budget) for t in labels], "medium")
+        for text in labels:
+            width = _text_width(face, text)
+            assert width <= budget or face is fonts["nano"], (
+                f"{lang}: {text!r} is {width}px against a {budget}px budget"
+            )
+
+    def test_the_face_steps_down_rather_than_truncating(self, fonts) -> None:
+        """A narrower budget must yield a smaller face, not a clipped label."""
+        from custom_components.solar_cube.solar_lcd import _s, _shared_face
+
+        label = _s("discharging_label", "pl")
+        wide = _shared_face(fonts, [(label, 76)], "medium")
+        narrow = _shared_face(fonts, [(label, 40)], "medium")
+        assert _text_width(narrow, label) < _text_width(wide, label)
