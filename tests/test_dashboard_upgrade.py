@@ -7,6 +7,7 @@ These tests pin the four cases an upgrade has to tell apart.
 """
 from __future__ import annotations
 
+import pathlib
 from typing import ClassVar
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -36,6 +37,7 @@ BASE_DATA = {
 SHIPPED_V1 = {"views": [{"title": "v1", "cards": []}]}
 SHIPPED_V2 = {"views": [{"title": "v2", "cards": []}]}
 USER_EDITED = {"views": [{"title": "mine", "cards": [{"type": "markdown"}]}]}
+V0_1_0 = {"views": [{"title": "v0.1.0 leftover", "cards": []}]}
 
 
 class FakeStore:
@@ -242,6 +244,71 @@ class TestLegacyInstall:
 
         assert await seed(hass, entry, reapply=True) is True
         assert FakeStore.documents[first_url()] == SHIPPED_V1
+
+
+class TestStaleSourceDirectory:
+    """v0.1.0 shipped these YAML files at the top level of the repository and had
+    users copy them into /config/dashboards. Later releases ship them inside the
+    integration instead, so nothing replaces those copies -- and they used to be
+    preferred, which pinned dashboards at v0.1.0 forever.
+    """
+
+    @pytest.fixture
+    def leftover(self, hass, lovelace):
+        """A v0.1.0 copy sitting in /config/dashboards."""
+        stale = pathlib.Path(hass.config.config_dir) / "dashboards"
+        stale.mkdir(exist_ok=True)
+        for spec in C.DASHBOARD_SPECS["en"]:
+            (stale / spec["filename"]).write_text(yaml.safe_dump(V0_1_0))
+        return stale
+
+    async def test_the_packaged_copy_wins(self, hass, lovelace, leftover) -> None:
+        entry = make_entry(hass)
+        await seed(hass, entry)
+        assert FakeStore.documents[first_url()] == SHIPPED_V1
+
+    async def test_reapply_is_not_defeated_by_a_leftover(
+        self, hass, lovelace, leftover
+    ) -> None:
+        """Re-applying reads through the same resolver, so the leftover would have
+        made the escape hatch useless too."""
+        entry = make_entry(hass, **{C.OPT_STORAGE_DASHBOARDS_IMPORTED: True})
+        FakeStore.documents[first_url()] = USER_EDITED
+
+        await seed(hass, entry, reapply=True)
+        assert FakeStore.documents[first_url()] == SHIPPED_V1
+
+    async def test_an_upgrade_reaches_a_v0_1_0_install(
+        self, hass, lovelace, leftover
+    ) -> None:
+        """End to end: dashboards seeded from the leftover, then the integration is
+        upgraded and the user re-applies."""
+        entry = make_entry(hass)
+        FakeStore.documents[first_url()] = V0_1_0
+
+        ship(lovelace, SHIPPED_V2)
+        await seed(hass, entry, reapply=True)
+        assert FakeStore.documents[first_url()] == SHIPPED_V2
+
+    async def test_the_leftover_is_reported_so_it_can_be_removed(
+        self, hass, lovelace, leftover, caplog
+    ) -> None:
+        entry = make_entry(hass)
+        await seed(hass, entry)
+
+        assert "leftover from an older Solar Cube release" in caplog.text
+        assert str(leftover) in caplog.text
+
+    async def test_a_file_this_release_does_not_ship_still_resolves(
+        self, hass, lovelace, leftover
+    ) -> None:
+        """The fallback remains, so removing a dashboard from the package does not
+        strand anyone who has a copy."""
+        (lovelace["dir"] / C.DASHBOARD_SPECS["en"][0]["filename"]).unlink()
+        entry = make_entry(hass)
+        await seed(hass, entry)
+
+        assert FakeStore.documents[first_url()] == V0_1_0
 
 
 class TestAutomations:

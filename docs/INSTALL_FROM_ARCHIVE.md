@@ -140,6 +140,20 @@ shipped dashboard against what it last wrote:
 | Shipped copy newer, yours untouched | refreshed automatically |
 | Shipped copy newer, yours edited | left alone, and a Repairs issue explains how to take the new one |
 
+### Upgrading from v0.1.0
+
+v0.1.0 shipped the dashboard YAML at the top level of the repository, and its
+install steps had you copy it into `/config/dashboards`. Those files are no
+longer used — the dashboards now come from inside the integration — but a device
+that went through v0.1.0 still has them. Delete them once:
+
+```bash
+sudo rm -rf "$CONFIG/dashboards"
+```
+
+Leaving them is harmless from this release on, and the log names each file it
+ignores, but removing them avoids confusion later.
+
 To force the shipped version and discard local edits — including on installs
 that predate this behaviour — go to **Settings → Devices & Services → Solar Cube
 → Configure**, tick **Re-apply shipped dashboards**, submit, and restart when

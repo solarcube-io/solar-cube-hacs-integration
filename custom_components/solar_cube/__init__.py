@@ -736,20 +736,43 @@ async def _async_ensure_storage_dashboards(
     # re-trigger the import themselves.
     failed = False
 
-    # Storage dashboards source files live in /config/dashboards, with the
-    # packaged copies as a fallback.
-    dashboards_dir = Path(hass.config.config_dir) / "dashboards"
+    # The packaged copy is authoritative: it is the version that shipped with
+    # this release, so an upgrade must be able to reach the dashboards.
+    #
+    # It used to be the other way round, with /config/dashboards preferred. That
+    # made shipped dashboards permanently unreachable on any install that had
+    # been through v0.1.0, because v0.1.0 distributed those YAML files at the top
+    # level of the repository and the install steps put them in /config/dashboards.
+    # Later releases stopped shipping them there, so nothing ever replaced the
+    # copies already on disk, and they kept winning -- including when re-applying,
+    # which reads through this same function. Dashboards stayed at v0.1.0 no
+    # matter what was installed over the top.
+    #
+    # Customisation belongs in the UI now: edit a dashboard and the fingerprint
+    # check leaves your version alone (see below).
+    stale_dir = Path(hass.config.config_dir) / "dashboards"
     lang = normalize_language(
         config.get(CONF_LANGUAGE), getattr(hass.config, "language", None)
     )
     dashboard_specs = DASHBOARD_SPECS[lang]
 
     def _resolve_source(filename: str) -> Path | None:
-        """Pick the first readable source file for a dashboard (blocking)."""
-        for candidate in (dashboards_dir / filename, PACKAGED_DASHBOARDS_DIR / filename):
-            if candidate.is_file():
-                return candidate
-        return None
+        """Return the packaged dashboard source, reporting ignored leftovers."""
+        packaged = PACKAGED_DASHBOARDS_DIR / filename
+        leftover = stale_dir / filename
+        if packaged.is_file():
+            if leftover.is_file():
+                LOGGER.warning(
+                    "Ignoring %s: it is a leftover from an older Solar Cube "
+                    "release and is no longer used. The dashboard now comes from "
+                    "%s. You can delete %s",
+                    leftover,
+                    packaged,
+                    stale_dir,
+                )
+            return packaged
+        # Only if this release did not ship the file at all.
+        return leftover if leftover.is_file() else None
 
     dashboards_collection = DashboardsCollection(hass)
     await dashboards_collection.async_load()
@@ -773,8 +796,8 @@ async def _async_ensure_storage_dashboards(
                 "in %s or %s",
                 url_path,
                 spec["filename"],
-                dashboards_dir,
                 PACKAGED_DASHBOARDS_DIR,
+                stale_dir,
             )
             failed = True
             continue
