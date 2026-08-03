@@ -45,7 +45,7 @@ views:
             max_expected_energy: 16000
             min_expected_energy: 10
             wh_kwh_threshold: 1000
-            title: Przepływ Energii
+            title: Przepływ energii
           - type: entities
             entities:
               - type: custom:energy-entity-row
@@ -55,31 +55,31 @@ views:
                 entity: sensor.grid_buy_active_energy_total_cost
                 name: Koszty zakupu energii
             state_color: false
-            title: Wartość wysłanej i pobranej energii
+            title: Wartość sprzedanej i zakupionej energii
             show_header_toggle: true
           - show_name: true
             show_icon: true
             show_state: true
             type: glance
             entities:
-              - entity: sensor.hourly_optimisation_savings
-                name: Bieżąca 1H
-                icon: mdi:cash-check
               - entity: sensor.daily_optimisation_savings
                 name: Dzisiaj
                 icon: mdi:cash-check
               - entity: sensor.weekly_optimisation_savings
-                name: Ostatnie 7D
+                name: Ostatnie 7d
                 icon: mdi:cash-check
               - entity: sensor.monthly_optimisation_savings
                 name: Ten miesiąc
                 icon: mdi:cash-check
+              - entity: sensor.solar_cube_optimised_energy_total_savings
+                name: Razem
+                icon: mdi:cash-multiple
             title: Oszczędności z pracy magazynu
             state_color: false
       - type: grid
         cards:
           - type: custom:power-flow-card-plus
-            title: Dystrybucja Mocy
+            title: Dystrybucja mocy
             entities:
               battery:
                 state_of_charge: sensor.solar_cube_ess_soc
@@ -187,7 +187,7 @@ views:
                   fill: 'null'
                 yaxis_id: first
               - entity: sensor.hourly_grid_buy_energy
-                name: Zakup Energii
+                name: Zakup energii
                 type: column
                 group_by:
                   func: max
@@ -196,7 +196,7 @@ views:
                 color: '#488EC2'
                 yaxis_id: first
               - entity: sensor.hourly_grid_sell_energy
-                name: Sprzedaż Energii
+                name: Sprzedaż energii
                 type: column
                 color: '#A280DB'
                 group_by:
@@ -205,7 +205,7 @@ views:
                   fill: 'null'
                 yaxis_id: first
               - entity: sensor.hourly_consumption_energy
-                name: Konsumpcja
+                name: Zużycie
                 type: column
                 color: '#743029'
                 group_by:
@@ -214,7 +214,7 @@ views:
                   fill: 'null'
                 yaxis_id: first
               - entity: sensor.solar_cube_sell_energy_price
-                name: Cena Sprzedaży
+                name: Cena sprzedaży
                 type: line
                 curve: stepline
                 stroke_width: 3
@@ -226,7 +226,7 @@ views:
                   fill: last
                 yaxis_id: second
               - entity: sensor.solar_cube_buy_energy_price
-                name: Cena Zakupu
+                name: Cena zakupu
                 type: line
                 curve: stepline
                 stroke_width: 3
@@ -296,4 +296,4 @@ views:
               speed: ''
             title: Prognoza pogody
     max_columns: 4
-    title: 'Solar Cube '
+    title: Solar Cube

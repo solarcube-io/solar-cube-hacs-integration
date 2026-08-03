@@ -1,1 +1,37 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# Testing / tooling
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# OS noise
+.DS_Store
+**/.DS_Store
+
+# Build / packaging artifacts
+dist/
+*.tar
+*.tar.gz
+*.zip
+
+# Local editor config
+*.code-workspace
+
+# Release notes are drafted locally (v0.1.5 predates this rule and stays tracked)
 **/RELEASE_NOTES/*
+!RELEASE_NOTES/v0.1.5.md
+
+# Vendored Font Awesome download (45 MB, not shipped by HACS).
+# Re-fetch with: tools/fetch_fontawesome.sh
+tools/fontawesome-free-*-web/
+
+# Rendered LCD preview output (regenerate with tools/preview_lcd.py)
+lcd_preview.png

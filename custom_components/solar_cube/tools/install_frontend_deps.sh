@@ -311,9 +311,19 @@ install_repo_archive() {
    repo="$1"      # owner/name
    folder="$2"    # install folder name
    js_re="$3"     # regex for JS asset
+   ref="${4:-}"   # optional pinned commit SHA or branch
 
-   branch="$(gh_default_branch "$repo" || echo main)"
-   url="https://github.com/$repo/archive/refs/heads/$branch.zip"
+   # Pinning to an immutable ref matters: this downloads JavaScript that then
+   # runs in every browser that opens the dashboard. Only fall back to the
+   # moving default branch when no ref was supplied.
+   if [ -n "$ref" ]; then
+      url="https://github.com/$repo/archive/$ref.zip"
+      branch="$ref"
+   else
+      warn "$repo is not pinned; downloading its moving default branch"
+      branch="$(gh_default_branch "$repo" || echo main)"
+      url="https://github.com/$repo/archive/refs/heads/$branch.zip"
+   fi
 
    target_dir="$COMMUNITY_DIR/$folder"
    mkdir -p "$target_dir"
@@ -375,7 +385,10 @@ add_resource "$url"
 url="$(install_release "SpangleLabs/history-explorer-card" "v1.0.54" "history-explorer-card" 'history-explorer-card.*\\.js(\\.gz)?$')" || { failures=$((failures+1)); url=""; }
 add_resource "$url"
 
-url="$(install_repo_archive "hulkhaugen/hass-bha-icons" "hass-bha-icons" '(bha|hass-bha).*icons.*\\.js(\\.gz)?$')" || { failures=$((failures+1)); url=""; }
+# hass-bha-icons publishes no releases or tags, so it is pinned by commit.
+# Refresh deliberately after reviewing upstream changes.
+HASS_BHA_ICONS_REF="1868659e336d4880d95b5d45d005bd91678f407a"
+url="$(install_repo_archive "hulkhaugen/hass-bha-icons" "hass-bha-icons" '(bha|hass-bha).*icons.*\\.js(\\.gz)?$' "$HASS_BHA_ICONS_REF")" || { failures=$((failures+1)); url=""; }
 add_resource "$url"
 
 url="$(install_release "MrBartusek/MeteoalarmCard" "v2.7.2" "meteoalarm-card" 'meteoalarm.*\\.js(\\.gz)?$')" || { failures=$((failures+1)); url=""; }

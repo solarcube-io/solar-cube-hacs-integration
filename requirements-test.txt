@@ -1,0 +1,15 @@
+# Pulls in Home Assistant itself plus the pytest plugin and fixtures. Pinned to
+# the plugin release carrying Home Assistant 2026.1.3, the minimum declared in
+# hacs.json -- the suite should run against the oldest core we support, not
+# whatever is newest. Raise both together.
+pytest-homeassistant-custom-component==0.13.308
+
+# Runtime dependency of the integration.
+influxdb-client==1.43.0
+
+# Optional at runtime (Home Assistant ships both), required to exercise the
+# LCD renderer and the frontend-dependent config flow tests.
+Pillow>=10.0.0
+home-assistant-frontend
+
+pytest-cov

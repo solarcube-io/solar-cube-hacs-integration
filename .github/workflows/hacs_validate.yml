@@ -2,7 +2,11 @@ name: HACS Validate
 
 on:
   push:
+    branches: [main]
   pull_request:
+  schedule:
+    # Catch HACS rule changes that would break new installs.
+    - cron: "0 4 * * 1"
   workflow_dispatch:
 
 permissions:
@@ -13,9 +17,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: HACS validation
-        uses: hacs/action@main
+        # Pinned to a release tag rather than @main so a change upstream cannot
+        # silently alter what CI enforces.
+        uses: hacs/action@22.5.0
         with:
           category: integration

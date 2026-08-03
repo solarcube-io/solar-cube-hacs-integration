@@ -13,8 +13,14 @@
           "agents_bucket": "Bucket agents (prognozy/akcje)",
           "import_dashboards": "Importuj dashboardy",
           "language": "Język dashboardów",
-          "run_frontend_installer": "Uruchom instalator, aby pobrać wymagane zależności.",
-          "configure_energy_dashboard": "Skonfiguruj pulpit Energii (Home Assistant)"
+          "run_frontend_installer": "Automatycznie pobierz wymagane karty dashboardów (zalecane)",
+          "configure_energy_dashboard": "Skonfiguruj pulpit Energii (Home Assistant)",
+          "s1_lcd_display": "Aktywuj wyświetlacz LCD (dostępne tylko dla Solar Cube PRO)",
+          "s1_lcd_bridge_url": "URL Solar LCD Bridge",
+          "s1_lcd_bridge_token": "Token Solar LCD Bridge (zostaw bez zmian, chyba że ustawiono własny BRIDGE_TOKEN)"
+        },
+        "data_description": {
+          "s1_lcd_bridge_url": "Zmień tylko, jeśli bridge nie działa w dołączonym kontenerze."
         }
       },
       "reauth_confirm": {
@@ -51,8 +57,15 @@
           "agents_bucket": "Bucket agents (prognozy/akcje)",
           "import_dashboards": "Importuj dashboardy",
           "language": "Język dashboardów",
-          "run_frontend_installer": "Uruchom instalator, aby pobrać wymagane zależności.",
-          "configure_energy_dashboard": "Skonfiguruj pulpit Energii (Home Assistant)"
+          "run_frontend_installer": "Automatycznie pobierz wymagane karty dashboardów (zalecane)",
+          "configure_energy_dashboard": "Skonfiguruj pulpit Energii (Home Assistant)",
+          "s1_lcd_display": "Aktywuj wyświetlacz LCD (dostępne tylko dla Solar Cube PRO)",
+          "s1_lcd_bridge_url": "URL Solar LCD Bridge",
+          "s1_lcd_bridge_token": "Token Solar LCD Bridge (zostaw bez zmian, chyba że ustawiono własny BRIDGE_TOKEN)",
+          "reapply_dashboards": "Przywróć wbudowane dashboardy (nadpisze Twoje zmiany)"
+        },
+        "data_description": {
+          "s1_lcd_bridge_url": "Zmień tylko, jeśli bridge nie działa w dołączonym kontenerze."
         }
       }
     },
@@ -65,7 +78,22 @@
   "issues": {
     "restart_required": {
       "title": "Wymagany restart",
-      "description": "Aby dokończyć pobieranie/aktualizację {integration}, wymagany jest restart Home Assistant. Kliknij Wyślij, aby zrestartować teraz. Po restarcie wykonaj twarde odświeżenie przeglądarki (Ctrl+F5 lub Cmd+Shift+R), aby wczytać zaktualizowane zasoby frontendu."
+      "fix_flow": {
+        "step": {
+          "confirm": {
+            "title": "Zrestartuj Home Assistant",
+            "description": "Home Assistant zostanie natychmiast zrestartowany, aby Solar Cube mógł dokończyć instalację. Niezapisane zmiany w innych kartach przeglądarki zostaną utracone. Po restarcie odśwież przeglądarkę (Ctrl+F5 lub Cmd+Shift+R), aby załadować zaktualizowane zasoby frontendu."
+          }
+        }
+      }
+    },
+    "lcd_bridge_problem": {
+      "title": "Wyświetlacz LCD Solar Cube niedostępny",
+      "description": "Wyświetlacz LCD Solar Cube PRO S1 jest włączony, ale nie można użyć mostka Solar LCD Bridge pod adresem {url}: {reason}.\n\nNie wpływa to na pozostałe funkcje integracji. Popraw konfigurację mostka albo wyłącz opcję **Włącz wyświetlacz LCD Solar Cube PRO S1 z danymi solarnymi**. Ten komunikat zniknie automatycznie, gdy klatka zostanie przyjęta."
+    },
+    "dashboards_outdated": {
+      "title": "Dashboardy Solar Cube są nieaktualne",
+      "description": "Ta aktualizacja zawiera nowszą wersję: {dashboards}, ale Twoja kopia została zmodyfikowana, więc pozostała nietknięta.\n\nAby przyjąć nową wersję i odrzucić swoje zmiany, przejdź do Ustawienia → Urządzenia i usługi → Solar Cube → Konfiguruj i zaznacz **Ponownie zastosuj dołączone dashboardy**."
     }
   }
 }
