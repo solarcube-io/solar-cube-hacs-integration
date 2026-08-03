@@ -127,6 +127,27 @@ sudo rm -rf "$CONFIG/custom_components/solar_cube"
 sudo tar -xzf /tmp/solar_cube-0.2.1.tar.gz -C "$CONFIG"
 ```
 
+## Getting updated dashboards after an upgrade
+
+Dashboards are seeded once and then belong to you, so Home Assistant will not
+replace a copy you might have edited. On upgrade the integration compares the
+shipped dashboard against what it last wrote:
+
+| Situation | What happens |
+| --- | --- |
+| Dashboard missing | created and seeded |
+| Shipped copy unchanged | nothing |
+| Shipped copy newer, yours untouched | refreshed automatically |
+| Shipped copy newer, yours edited | left alone, and a Repairs issue explains how to take the new one |
+
+To force the shipped version and discard local edits — including on installs
+that predate this behaviour — go to **Settings → Devices & Services → Solar Cube
+→ Configure**, tick **Re-apply shipped dashboards**, submit, and restart when
+asked. The tick is one-shot and clears itself.
+
+That also re-applies the Energy dashboard configuration and updates the shipped
+automations by id, leaving your own automations untouched.
+
 ## Checking it loaded
 
 ```bash

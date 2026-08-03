@@ -15,6 +15,7 @@ from .const import (
     CONF_IMPORT_DASHBOARDS,
     CONF_LANGUAGE,
     CONF_ORG,
+    CONF_REAPPLY_DASHBOARDS,
     CONF_RUN_FRONTEND_INSTALLER,
     CONF_S1_LCD_BRIDGE_TOKEN,
     CONF_S1_LCD_BRIDGE_URL,
@@ -25,6 +26,7 @@ from .const import (
     DEFAULT_IMPORT_DASHBOARDS,
     DEFAULT_NAME,
     DEFAULT_ORG,
+    DEFAULT_REAPPLY_DASHBOARDS,
     DEFAULT_RUN_FRONTEND_INSTALLER,
     DEFAULT_S1_LCD_BRIDGE_TOKEN,
     DEFAULT_S1_LCD_BRIDGE_URL,
@@ -279,6 +281,11 @@ class SolarCubeOptionsFlowHandler(config_entries.OptionsFlow):
                             CONF_RUN_FRONTEND_INSTALLER,
                             DEFAULT_RUN_FRONTEND_INSTALLER,
                         ),
+                        # Always taken from this submission: a one-shot action,
+                        # never carried over from the stored options.
+                        CONF_REAPPLY_DASHBOARDS: user_input.get(
+                            CONF_REAPPLY_DASHBOARDS, DEFAULT_REAPPLY_DASHBOARDS
+                        ),
                         CONF_S1_LCD_DISPLAY: user_input.get(
                             CONF_S1_LCD_DISPLAY, DEFAULT_S1_LCD_DISPLAY
                         ),
@@ -326,6 +333,10 @@ class SolarCubeOptionsFlowHandler(config_entries.OptionsFlow):
                     default=current.get(
                         CONF_IMPORT_DASHBOARDS, DEFAULT_IMPORT_DASHBOARDS
                     ),
+                ): bool,
+                # One-shot, so it always offers itself unticked.
+                vol.Optional(
+                    CONF_REAPPLY_DASHBOARDS, default=DEFAULT_REAPPLY_DASHBOARDS
                 ): bool,
                 vol.Optional(
                     CONF_LANGUAGE,

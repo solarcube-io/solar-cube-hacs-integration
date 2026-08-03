@@ -50,16 +50,34 @@ DATA_RESTART_NOTIFICATION_SHOWN: Final = "restart_notification_shown"
 OPT_STORAGE_DASHBOARDS_IMPORTED: Final = "_storage_dashboards_imported"
 OPT_ORPHAN_CLEANUP_DONE: Final = "_orphan_cleanup_done"
 
+# Fingerprint of the dashboard config this integration last wrote, per url_path.
+# Lets an upgrade tell three cases apart: nothing changed, the shipped copy
+# changed while the user's copy is untouched (safe to refresh), and the user has
+# edited theirs (must not be overwritten without being asked).
+OPT_SEEDED_DASHBOARDS: Final = "_seeded_dashboards"
+
+# One-shot: overwrite the shipped dashboards, the Energy dashboard and the
+# shipped automations, discarding local edits to them.
+CONF_REAPPLY_DASHBOARDS: Final = "reapply_dashboards"
+DEFAULT_REAPPLY_DASHBOARDS: Final = False
+
 # Option keys that are internal bookkeeping and must not be surfaced in, or
 # dropped by, the options flow.
 INTERNAL_OPTION_KEYS: Final = frozenset(
-    {OPT_STORAGE_DASHBOARDS_IMPORTED, OPT_ORPHAN_CLEANUP_DONE}
+    {
+        OPT_STORAGE_DASHBOARDS_IMPORTED,
+        OPT_ORPHAN_CLEANUP_DONE,
+        OPT_SEEDED_DASHBOARDS,
+    }
 )
 
 ISSUE_RESTART_REQUIRED: Final = "restart_required"
 # Raised when the LCD bridge is configured but unusable. Appliance users do
 # not read logs, so this surfaces in Settings -> Repairs.
 ISSUE_LCD_BRIDGE: Final = "lcd_bridge_problem"
+# Raised when a shipped dashboard has been updated but the user's copy was
+# edited, so it was left alone rather than overwritten.
+ISSUE_DASHBOARDS_OUTDATED: Final = "dashboards_outdated"
 
 # Dashboards and dependencies are bundled with the integration so they are available
 # even when installed via HACS (which installs only custom_components/<domain>).

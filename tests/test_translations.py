@@ -98,17 +98,32 @@ class TestFlowCoverage:
             assert not aborts - have, f"{lang}: missing {sorted(aborts - have)}"
 
     def test_every_schema_field_has_a_label(self) -> None:
-        code = (COMPONENT / "config_flow.py").read_text(encoding="utf-8")
-        names = set(re.findall(r"vol\.(?:Optional|Required)\(\s*(CONF_\w+)", code))
-        expected = {
-            getattr(const, n) for n in names if isinstance(getattr(const, n, None), str)
-        }
-        expected |= {"name", "url", "token"}  # from homeassistant.const
+        """Checked per flow: the two schemas legitimately differ.
 
-        for lang in LANGUAGES:
-            data = load(lang)
-            for section, step in (("config", "user"), ("options", "init")):
-                have = set(data[section]["step"][step]["data"])
+        reapply_dashboards is an upgrade action, so it appears in the options
+        flow only -- there is nothing to re-apply on a first install.
+        """
+        code = (COMPONENT / "config_flow.py").read_text(encoding="utf-8")
+        # Split the source at the options handler so each schema is read alone.
+        split = code.index("class SolarCubeOptionsFlowHandler")
+        sources = {
+            ("config", "user"): code[:split],
+            ("options", "init"): code[split:],
+        }
+        base = {"name", "url", "token"}  # from homeassistant.const
+
+        for (section, step), source in sources.items():
+            names = set(
+                re.findall(r"vol\.(?:Optional|Required)\(\s*(CONF_\w+)", source)
+            )
+            expected = {
+                getattr(const, n)
+                for n in names
+                if isinstance(getattr(const, n, None), str)
+            } | base
+
+            for lang in LANGUAGES:
+                have = set(load(lang)[section]["step"][step]["data"])
                 assert not expected - have, (
                     f"{lang} {section}.{step}: missing {sorted(expected - have)}"
                 )

@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+import hashlib
 import json
 import logging
 import time
@@ -19,6 +20,7 @@ from .const import (
     CONF_IMPORT_DASHBOARDS,
     CONF_LANGUAGE,
     CONF_ORG,
+    CONF_REAPPLY_DASHBOARDS,
     CONF_RUN_FRONTEND_INSTALLER,
     CONF_S1_LCD_BRIDGE_TOKEN,
     CONF_S1_LCD_BRIDGE_URL,
@@ -33,13 +35,16 @@ from .const import (
     DEFAULT_CURRENCY,
     DEFAULT_IMPORT_DASHBOARDS,
     DEFAULT_LANGUAGE,
+    DEFAULT_REAPPLY_DASHBOARDS,
     DEFAULT_RUN_FRONTEND_INSTALLER,
     DEFAULT_S1_LCD_BRIDGE_TOKEN,
     DEFAULT_S1_LCD_BRIDGE_URL,
     DEFAULT_S1_LCD_DISPLAY,
     DOMAIN,
+    ISSUE_DASHBOARDS_OUTDATED,
     ISSUE_RESTART_REQUIRED,
     OPT_ORPHAN_CLEANUP_DONE,
+    OPT_SEEDED_DASHBOARDS,
     OPT_STORAGE_DASHBOARDS_IMPORTED,
     PACKAGED_DASHBOARDS_DIR,
     normalize_language,
@@ -229,18 +234,35 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             name=f"{DOMAIN}_frontend_installer",
         )
 
-    if config.get(CONF_IMPORT_DASHBOARDS, DEFAULT_IMPORT_DASHBOARDS):
-        restart_needed |= await _async_ensure_storage_dashboards(hass, entry, config)
-        restart_needed |= await _async_ensure_automations(hass)
+    # One-shot: overwrite everything this integration seeds into Home Assistant's
+    # own storage, discarding local edits to it. Without this there is no way to
+    # pick up a newer shipped dashboard once a copy exists.
+    reapply = bool(config.get(CONF_REAPPLY_DASHBOARDS, DEFAULT_REAPPLY_DASHBOARDS))
+    if reapply:
+        LOGGER.info(
+            "Re-applying shipped dashboards, automations and Energy dashboard "
+            "because '%s' was selected",
+            CONF_REAPPLY_DASHBOARDS,
+        )
+
+    if config.get(CONF_IMPORT_DASHBOARDS, DEFAULT_IMPORT_DASHBOARDS) or reapply:
+        restart_needed |= await _async_ensure_storage_dashboards(
+            hass, entry, config, reapply=reapply
+        )
+        restart_needed |= await _async_ensure_automations(hass, update=reapply)
 
     # Optional: one-shot configure the built-in Energy dashboard.
-    if config.get(
-        CONF_CONFIGURE_ENERGY_DASHBOARD, DEFAULT_CONFIGURE_ENERGY_DASHBOARD
+    if (
+        config.get(CONF_CONFIGURE_ENERGY_DASHBOARD, DEFAULT_CONFIGURE_ENERGY_DASHBOARD)
+        or reapply
     ):
         restart_needed |= await _async_configure_energy_dashboard(hass)
         _apply_one_shot_options(
             hass, entry, {CONF_CONFIGURE_ENERGY_DASHBOARD: False}
         )
+
+    if reapply:
+        _apply_one_shot_options(hass, entry, {CONF_REAPPLY_DASHBOARDS: False})
 
     # If we performed one-shot changes but did not run the installer, request restart now.
     if restart_needed and not installer_selected:
@@ -399,18 +421,22 @@ def _prune_backups(pattern_dir: Path, prefix: str) -> None:
             stale.unlink()
 
 
-async def _async_ensure_automations(hass: HomeAssistant) -> bool:
+async def _async_ensure_automations(
+    hass: HomeAssistant, update: bool = False
+) -> bool:
     """Ensure Solar Cube automations exist in /config/automations.yaml.
 
     Best-effort merge of shipped automations from the packaged
-    ``dashboards/automations.yaml``. Does not overwrite existing automations;
-    deduplicates by non-empty 'id' (preferred) or 'alias'.
+    ``dashboards/automations.yaml``, deduplicated by non-empty 'id' (preferred)
+    or 'alias'. Existing automations are left alone unless ``update`` is set, in
+    which case a shipped automation replaces the local one with the same id --
+    otherwise there is no way to pick up a corrected automation.
     """
 
     domain_data = _domain_data(hass)
 
-    # Guard: only run once per HA runtime.
-    if domain_data.get(DATA_AUTOMATIONS_IMPORTED):
+    # Guard: only run once per HA runtime, unless explicitly re-applying.
+    if domain_data.get(DATA_AUTOMATIONS_IMPORTED) and not update:
         return False
     domain_data[DATA_AUTOMATIONS_IMPORTED] = True
 
@@ -443,8 +469,16 @@ async def _async_ensure_automations(hass: HomeAssistant) -> bool:
             automation_id = str(automation.get("id") or "").strip()
             automation_alias = str(automation.get("alias") or "").strip()
 
-            # Skip if already present.
+            # Replace by id when re-applying, otherwise leave it alone.
             if automation_id and automation_id in existing_ids:
+                if not update:
+                    continue
+                for index, current in enumerate(existing):
+                    if str(current.get("id") or "").strip() == automation_id:
+                        if current != automation:
+                            existing[index] = automation
+                            changed = True
+                        break
                 continue
             if (
                 not automation_id
@@ -629,26 +663,38 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     return True
 
 
+def _config_fingerprint(config: Any) -> str:
+    """Stable hash of a dashboard config, for spotting local edits."""
+    payload = json.dumps(config, sort_keys=True, ensure_ascii=False, default=str)
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+
 async def _async_ensure_storage_dashboards(
-    hass: HomeAssistant, entry: ConfigEntry, config: dict[str, Any]
+    hass: HomeAssistant, entry: ConfigEntry, config: dict[str, Any], reapply: bool = False
 ) -> bool:
     """Ensure Solar Cube dashboards exist as Lovelace Storage dashboards.
 
-    This creates dashboards that are editable in the UI afterwards. It is a
-    one-shot best-effort import, recorded in the entry options so it never runs
-    again -- not even after a Home Assistant restart.
+    Creates them as documents the user can edit afterwards, and keeps them
+    current across upgrades. For each dashboard there are four cases, told apart
+    by the fingerprint of whatever this integration last wrote:
+
+    * absent            -> create and seed
+    * unchanged shipped -> nothing to do
+    * shipped changed, user's copy untouched -> refresh it silently
+    * shipped changed, user's copy edited    -> leave it, raise a Repairs issue
+
+    ``reapply`` forces the last case to overwrite, which is what the
+    "Re-apply shipped dashboards" option does.
 
     Known limitation: Home Assistant does not expose the ``DashboardsCollection``
     instance owned by the running ``lovelace`` component, so a second instance
-    has to be used to create the dashboards. The live component keeps a stale
-    in-memory list until the next restart, which is why a restart is requested
-    afterwards. Running this exactly once keeps that window as small as possible.
+    has to be used. The live component keeps a stale in-memory list until the
+    next restart, which is why a restart is requested afterwards.
     """
 
-    if entry.options.get(OPT_STORAGE_DASHBOARDS_IMPORTED):
-        return False
-
     domain_data = _domain_data(hass)
+    seeded: dict[str, str] = dict(entry.options.get(OPT_SEEDED_DASHBOARDS) or {})
+    outdated: list[str] = []
 
     # Lovelace may not be ready yet during startup.
     try:
@@ -718,10 +764,6 @@ async def _async_ensure_storage_dashboards(
     for spec in dashboard_specs:
         url_path = spec["url_path"]
 
-        # If Lovelace already knows this dashboard, do nothing.
-        if url_path in lovelace_data.dashboards:
-            continue
-
         source_path = await hass.async_add_executor_job(
             _resolve_source, spec["filename"]
         )
@@ -750,6 +792,8 @@ async def _async_ensure_storage_dashboards(
             failed = True
             continue
 
+        shipped = _config_fingerprint(config_dict)
+
         item = existing.get(url_path)
         if item is None:
             try:
@@ -773,28 +817,51 @@ async def _async_ensure_storage_dashboards(
             changed = True
 
         store = LovelaceStorage(hass, item)
-        # Only seed config if missing; never overwrite user edits.
         try:
-            await store.async_load(False)
+            stored = await store.async_load(False)
         except ConfigNotFound:
+            stored = None
+        except Exception as err:  # noqa: BLE001
+            LOGGER.debug("Unexpected error loading dashboard %s: %s", url_path, err)
+            failed = True
+            continue
+
+        write = False
+        if stored is None:
+            write = True
+        elif shipped != seeded.get(url_path):
+            if reapply or _config_fingerprint(stored) == seeded.get(url_path):
+                # Either the user asked, or their copy is exactly what we last
+                # wrote, so refreshing it discards nothing they authored.
+                write = True
+            else:
+                outdated.append(spec["title"])
+                LOGGER.info(
+                    "Solar Cube dashboard '%s' has a newer shipped version, but the "
+                    "local copy was edited; leaving it alone",
+                    url_path,
+                )
+
+        if write:
             try:
                 await store.async_save(config_dict)
-                LOGGER.info(
-                    "Created Lovelace Storage dashboard '%s' from %s",
-                    url_path,
-                    source_path,
-                )
-                changed = True
             except Exception as err:  # noqa: BLE001
                 LOGGER.warning(
                     "Failed saving storage dashboard config for %s: %s", url_path, err
                 )
                 failed = True
                 continue
-        except Exception as err:  # noqa: BLE001
-            LOGGER.debug("Unexpected error loading dashboard %s: %s", url_path, err)
-            failed = True
-            continue
+            seeded[url_path] = shipped
+            changed = True
+            LOGGER.info(
+                "%s Lovelace Storage dashboard '%s' from %s",
+                "Updated" if stored is not None else "Created",
+                url_path,
+                source_path,
+            )
+        elif url_path not in seeded:
+            # First run against a dashboard that predates fingerprinting.
+            seeded[url_path] = _config_fingerprint(stored) if stored else shipped
 
         # Register panel and expose it to Lovelace so it can be edited via UI.
         lovelace_data.dashboards[url_path] = store
@@ -820,8 +887,27 @@ async def _async_ensure_storage_dashboards(
         )
     else:
         _apply_one_shot_options(
-            hass, entry, {OPT_STORAGE_DASHBOARDS_IMPORTED: True}
+            hass,
+            entry,
+            {
+                OPT_STORAGE_DASHBOARDS_IMPORTED: True,
+                OPT_SEEDED_DASHBOARDS: seeded,
+            },
         )
+
+    if outdated:
+        ir.async_create_issue(
+            hass,
+            DOMAIN,
+            ISSUE_DASHBOARDS_OUTDATED,
+            is_fixable=False,
+            severity=ir.IssueSeverity.WARNING,
+            translation_key=ISSUE_DASHBOARDS_OUTDATED,
+            translation_placeholders={"dashboards": ", ".join(outdated)},
+        )
+    else:
+        ir.async_delete_issue(hass, DOMAIN, ISSUE_DASHBOARDS_OUTDATED)
+
     return changed
 
 
