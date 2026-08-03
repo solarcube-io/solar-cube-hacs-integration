@@ -263,3 +263,37 @@ class TestDashboardTranslations:
                 path = DASHBOARDS / f"{base}_solar_cube_{lang}.yaml"
                 for label in self._labels(path):
                     assert label == label.rstrip(), f"{path.name}: {label!r}"
+
+
+def _labels_for(lang: str, field: str) -> list[str]:
+    """Every label a given schema field has, across both flows."""
+    data = json.loads(
+        (TRANSLATIONS / f"{lang}.json").read_text(encoding="utf-8")
+    )
+    found = []
+    for flow in ("config", "options"):
+        for body in (data.get(flow, {}).get("step") or {}).values():
+            if field in (body.get("data") or {}):
+                found.append(body["data"][field])
+    return found
+
+
+class TestRequestedWording:
+    """Copy the user asked for by name. Pinned so a later edit cannot quietly
+    revert it."""
+
+    @pytest.mark.parametrize("lang", ("en", "pl"))
+    def test_the_lcd_option_names_the_pro_without_the_model_number(self, lang) -> None:
+        for label in _labels_for(lang, "s1_lcd_display"):
+            assert "Solar Cube PRO" in label
+            assert "S1" not in label
+
+    @pytest.mark.parametrize("lang", ("en", "pl"))
+    def test_the_reapply_option_reads_as_a_sentence(self, lang) -> None:
+        """It appeared in the UI as the raw key `reapply_dashboards`."""
+        labels = _labels_for(lang, "reapply_dashboards")
+        assert labels, f"{lang}: no label for reapply_dashboards"
+        for label in labels:
+            assert label != "reapply_dashboards"
+            assert "_" not in label
+            assert label[0].isupper()

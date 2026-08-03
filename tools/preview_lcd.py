@@ -27,13 +27,17 @@ DEFAULT_OUT = ROOT / "docs" / "lcd_previews"
 # Raw coordinator values: powers in W, voltages in mV, SoC in %, prices and
 # savings in currency units. sensor_definitions applies the divisions, so the
 # voltages are deliberately given as millivolts.
+# ess_active_power is positive while discharging, negative while charging, so a
+# scenario's sign has to agree with its controller_id. They were authored against
+# an inverted renderer and read backwards once that was corrected;
+# tests/test_battery_direction.py now checks the agreement.
 SCENARIOS: dict[str, tuple[str, dict]] = {
     "peak-solar": (
         "Midday peak: PV covers the house, charges the battery and exports",
         {
             "pv_active_power": 7400,
             "consumption_active_power": 1900,
-            "ess_active_power": 3200,
+            "ess_active_power": -3200,
             "grid_active_power": -2300,
             "ess_soc": 61,
             "grid_voltage_l1": 241000,
@@ -67,7 +71,7 @@ SCENARIOS: dict[str, tuple[str, dict]] = {
         {
             "pv_active_power": 0,
             "consumption_active_power": 3100,
-            "ess_active_power": -2900,
+            "ess_active_power": 2900,
             "grid_active_power": 200,
             "ess_soc": 47,
             "grid_voltage_l1": 236000,
@@ -84,7 +88,7 @@ SCENARIOS: dict[str, tuple[str, dict]] = {
         {
             "pv_active_power": 0,
             "consumption_active_power": 700,
-            "ess_active_power": 4100,
+            "ess_active_power": -4100,
             "grid_active_power": 4800,
             "ess_soc": 34,
             "grid_voltage_l1": 229000,
@@ -101,7 +105,7 @@ SCENARIOS: dict[str, tuple[str, dict]] = {
         {
             "pv_active_power": 1200,
             "consumption_active_power": 900,
-            "ess_active_power": -5200,
+            "ess_active_power": 5200,
             "grid_active_power": -5500,
             "ess_soc": 72,
             "grid_voltage_l1": 244000,
@@ -156,7 +160,7 @@ SCENARIOS: dict[str, tuple[str, dict]] = {
         {
             "pv_active_power": 19850,
             "consumption_active_power": 18400,
-            "ess_active_power": -12750,
+            "ess_active_power": 12750,
             "grid_active_power": -14300,
             "ess_soc": 100,
             "grid_voltage_l1": 253900,

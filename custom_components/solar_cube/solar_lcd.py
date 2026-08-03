@@ -723,7 +723,13 @@ def _render_image_pil(
     savings   = _safe_float(data.get("optimised_energy_total_savings"), "optimised_energy_total_savings")
     ctrl_id   = data.get("controller_id")
 
-    bat_charging   = (ess_w or 0) >= 0
+    # ess_active_power is positive when the battery is discharging and negative
+    # when it is charging, which is also what the panel dashboard assumes
+    # (power-flow-card-plus battery with invert_state: false). This was inverted,
+    # so the tile read "CHARGING" while the battery discharged -- most visibly in
+    # DCH2, where it discharges to the grid. Zero counts as charging, as before:
+    # the tile has no idle state and reads "0.0 kW" either way.
+    bat_charging   = (ess_w or 0) <= 0
     grid_exporting = (grid_w or 0) <= 0
 
     # ── Create canvas with fixed LCD background ──────────────────────────────────
